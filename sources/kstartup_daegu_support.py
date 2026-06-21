@@ -12,6 +12,9 @@ KSTARTUP_CATEGORY = "대구 창업지원"
 KSTARTUP_SOURCE_NAME = "창업진흥원 K-Startup"
 
 KSTARTUP_API_BASE_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01"
+KSTARTUP_PER_PAGE = 100
+KSTARTUP_MAX_PAGES = 10
+REQUEST_TIMEOUT_SECONDS = 30
 
 KSTARTUP_ENDPOINTS = [
     {
@@ -101,16 +104,60 @@ def fetch_kstartup_endpoint_items(
     endpoint_path: str,
 ) -> list[dict[str, Any]]:
     request_url = f"{KSTARTUP_API_BASE_URL}{endpoint_path}"
+    all_items: list[dict[str, Any]] = []
+    seen_item_keys: set[str] = set()
+    current_page = 1
 
+    while current_page <= KSTARTUP_MAX_PAGES:
+        page_items = fetch_kstartup_endpoint_page(
+            api_key=api_key,
+            request_url=request_url,
+            source_type=source_type,
+            page=current_page,
+        )
+
+        if not page_items:
+            break
+
+        new_items = []
+
+        for page_item in page_items:
+            item_key = build_kstartup_item_key(page_item)
+
+            if item_key in seen_item_keys:
+                continue
+
+            seen_item_keys.add(item_key)
+            new_items.append(page_item)
+
+        if not new_items:
+            break
+
+        all_items.extend(new_items)
+
+        if len(page_items) < KSTARTUP_PER_PAGE:
+            break
+
+        current_page += 1
+
+    return all_items
+
+
+def fetch_kstartup_endpoint_page(
+    api_key: str,
+    request_url: str,
+    source_type: str,
+    page: int,
+) -> list[dict[str, Any]]:
     response = requests.get(
         request_url,
         params={
             "ServiceKey": api_key,
-            "page": 1,
-            "perPage": 100,
+            "page": page,
+            "perPage": KSTARTUP_PER_PAGE,
             "returnType": "json",
         },
-        timeout=30,
+        timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 
@@ -118,9 +165,45 @@ def fetch_kstartup_endpoint_items(
     items = response_data.get("data", [])
 
     if not isinstance(items, list):
-        raise RuntimeError(f"{source_type} API 응답 data 형식이 list가 아닙니다.")
+        raise RuntimeError(
+            f"{source_type} API {page}페이지 응답 data 형식이 list가 아닙니다."
+        )
 
     return items
+
+
+def build_kstartup_item_key(raw_item: dict[str, Any]) -> str:
+    source_url = first_non_empty_value(
+        raw_item,
+        [
+            "detl_pg_url",
+            "biz_gdnc_url",
+            "biz_aply_url",
+        ],
+    )
+
+    if source_url:
+        return source_url
+
+    title = first_non_empty_value(
+        raw_item,
+        [
+            "biz_pbanc_nm",
+            "supt_biz_titl_nm",
+            "titl_nm",
+        ],
+    )
+    published_at = first_non_empty_value(
+        raw_item,
+        [
+            "fstm_reg_dt",
+            "pbanc_rcpt_bgng_dt",
+            "biz_yr",
+        ],
+    )
+
+    return f"{title}|{published_at}"
+
 
 def is_daegu_relevant_item(raw_item: dict[str, Any]) -> bool:
     combined_text = " ".join(str(value) for value in raw_item.values())
@@ -202,7 +285,8 @@ def normalize_kstartup_item(
         contact=contact,
         raw_payload=raw_item,
     )
-    
+
+
 def first_non_empty_value(raw_item: dict[str, Any], field_names: list[str]) -> str:
     for field_name in field_names:
         value = str(raw_item.get(field_name, "")).strip()
