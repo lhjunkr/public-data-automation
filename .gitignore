@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Node.js
+node_modules/
+
+# Runtime outputs
+outputs/
+history.jsonl
+
+# Local editor files
+.idea/
+.vscode/
+*.swp
