@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from selection.content_candidate import ContentCandidate
+from content.date_formatting import format_display_date
 from content.post_content import PostContent
 
 
@@ -67,10 +68,12 @@ def build_default_caption(
 
 def build_period_line(candidate: ContentCandidate) -> str:
     if candidate.deadline_at:
-        return f"마감일: {candidate.deadline_at}"
+        display_deadline = format_display_date(candidate.deadline_at)
+        return f"마감일: {display_deadline}"
 
     if candidate.published_at:
-        return f"게시일: {candidate.published_at}"
+        display_published_at = format_display_date(candidate.published_at)
+        return f"게시일: {display_published_at}"
 
     return ""
 
