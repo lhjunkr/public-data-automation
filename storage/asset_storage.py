@@ -71,11 +71,20 @@ def upload_image_asset_to_r2(
     client = create_r2_assets_client()
     bucket_name = get_r2_assets_bucket_name()
 
-    client.upload_file(
-        str(local_image_path),
-        bucket_name,
-        object_key,
-        ExtraArgs={"ContentType": "image/png"},
-    )
+    try:
+        client.upload_file(
+            str(local_image_path),
+            bucket_name,
+            object_key,
+            ExtraArgs={"ContentType": "image/png"},
+        )
+    except Exception as error:
+        raise RuntimeError(
+            "R2 이미지 업로드 실패: "
+            f"local_image_path={local_image_path}, "
+            f"bucket={bucket_name}, "
+            f"object_key={object_key}, "
+            f"cause={error}"
+        ) from error
 
     return build_asset_public_url(object_key)
