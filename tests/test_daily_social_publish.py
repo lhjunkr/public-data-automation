@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from content.post_content import PostContent
 from pipeline.daily_social_publish import (
+    DailySocialPublishResult,
     build_posted_history_records_from_publish_results,
     publish_daily_posts_to_social_channels,
     publish_prepared_posts_to_social_channels,
@@ -120,15 +121,18 @@ class TestDailySocialPublish(unittest.TestCase):
         )
 
     def test_build_posted_history_records_marks_partial_failure(self) -> None:
-        daily_publish_results = publish_prepared_posts_to_social_channels(
-            prepared_posts=[make_prepared_post(title="부분 성공 공고")],
-            publish_functions=(
-                fake_success_facebook_publish,
-                fake_failed_instagram_publish,
-                fake_success_threads_publish,
-                fake_success_naver_band_publish,
-            ),
-        )
+        prepared_post = make_prepared_post(title="부분 성공 공고")
+        daily_publish_results = [
+            DailySocialPublishResult(
+                prepared_post=prepared_post,
+                publish_results=[
+                    fake_success_facebook_publish(prepared_post),
+                    fake_failed_instagram_publish(prepared_post),
+                    fake_success_threads_publish(prepared_post),
+                    fake_success_naver_band_publish(prepared_post),
+                ],
+            )
+        ]
 
         history_records = build_posted_history_records_from_publish_results(
             daily_publish_results
@@ -144,15 +148,18 @@ class TestDailySocialPublish(unittest.TestCase):
     def test_build_posted_history_records_skips_all_failed_publish_results(
         self,
     ) -> None:
-        daily_publish_results = publish_prepared_posts_to_social_channels(
-            prepared_posts=[make_prepared_post(title="전체 실패 공고")],
-            publish_functions=(
-                fake_failed_facebook_publish,
-                fake_failed_instagram_publish,
-                fake_failed_threads_publish,
-                fake_failed_naver_band_publish,
-            ),
-        )
+        prepared_post = make_prepared_post(title="전체 실패 공고")
+        daily_publish_results = [
+            DailySocialPublishResult(
+                prepared_post=prepared_post,
+                publish_results=[
+                    fake_failed_facebook_publish(prepared_post),
+                    fake_failed_instagram_publish(prepared_post),
+                    fake_failed_threads_publish(prepared_post),
+                    fake_failed_naver_band_publish(prepared_post),
+                ],
+            )
+        ]
 
         history_records = build_posted_history_records_from_publish_results(
             daily_publish_results
@@ -249,5 +256,3 @@ def make_prepared_post(title: str) -> PreparedPost:
 
 if __name__ == "__main__":
     unittest.main()
-
-
