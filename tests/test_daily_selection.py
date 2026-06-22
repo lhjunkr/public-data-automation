@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from pipeline.daily_selection import (
     collect_daegu_notice_based_candidates,
+    collect_public_data_content_candidates,
     select_today_public_data_contents,
 )
 from selection.content_candidate import ContentCandidate
@@ -106,6 +107,39 @@ class TestDailySelection(unittest.TestCase):
 
         self.assertEqual(selected_candidates, [candidate])
         mock_download_recent_posted_history_from_r2.assert_not_called()
+
+    @patch("pipeline.daily_selection.print")
+    @patch("pipeline.daily_selection.collect_daegu_notice_based_candidates")
+    @patch("pipeline.daily_selection.collect_kstartup_daegu_support_candidates")
+    @patch("pipeline.daily_selection.collect_daegu_public_recruitment_candidates")
+    def test_collect_public_data_content_candidates_continues_after_source_failure(
+        self,
+        mock_collect_recruitment_candidates,
+        mock_collect_kstartup_candidates,
+        mock_collect_notice_based_candidates,
+        mock_print,
+    ) -> None:
+        recruitment_candidate = make_content_candidate(
+            title="채용 시험 후보",
+            source_url="https://example.com/recruitment",
+        )
+        notice_candidate = make_content_candidate(
+            title="공지사항 후보",
+            source_url="https://example.com/notice",
+        )
+
+        mock_collect_recruitment_candidates.return_value = [recruitment_candidate]
+        mock_collect_kstartup_candidates.side_effect = RuntimeError(
+            "K-Startup API error"
+        )
+        mock_collect_notice_based_candidates.return_value = [notice_candidate]
+
+        candidates = collect_public_data_content_candidates()
+
+        self.assertEqual(candidates, [recruitment_candidate, notice_candidate])
+        mock_print.assert_called_once_with(
+            "공공정보 수집 실패: 대구 창업지원 K-Startup API - K-Startup API error"
+        )
 
 
 def make_daegu_notice(title: str, source_url: str) -> DaeguNotice:

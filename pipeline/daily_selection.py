@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 
 from selection.content_candidate import ContentCandidate
@@ -20,6 +22,15 @@ from storage.posted_history import (
     download_recent_posted_history_from_r2,
     load_posted_source_urls,
 )
+
+
+ContentCandidateCollector = Callable[[], list[ContentCandidate]]
+
+
+@dataclass(frozen=True)
+class PublicDataContentSourceCollector:
+    source_name: str
+    collect_candidates: ContentCandidateCollector
 
 
 def select_today_public_data_contents(
@@ -47,11 +58,51 @@ def select_today_public_data_contents(
 def collect_public_data_content_candidates() -> list[ContentCandidate]:
     candidates: list[ContentCandidate] = []
 
-    candidates.extend(collect_daegu_public_recruitment_candidates())
-    candidates.extend(collect_kstartup_daegu_support_candidates())
-    candidates.extend(collect_daegu_notice_based_candidates())
+    for source_collector in build_public_data_content_source_collectors():
+        candidates.extend(
+            safely_collect_public_data_content_candidates(source_collector)
+        )
 
     return candidates
+
+
+def build_public_data_content_source_collectors(
+) -> list[PublicDataContentSourceCollector]:
+    return [
+        PublicDataContentSourceCollector(
+            source_name="대구 채용·시험 공공 RSS",
+            collect_candidates=collect_daegu_public_recruitment_candidates,
+        ),
+        PublicDataContentSourceCollector(
+            source_name="대구 창업지원 K-Startup API",
+            collect_candidates=collect_kstartup_daegu_support_candidates,
+        ),
+        PublicDataContentSourceCollector(
+            source_name="대구 공지사항 RSS",
+            collect_candidates=collect_daegu_notice_based_candidates,
+        ),
+    ]
+
+
+def safely_collect_public_data_content_candidates(
+    source_collector: PublicDataContentSourceCollector,
+) -> list[ContentCandidate]:
+    try:
+        return source_collector.collect_candidates()
+    except Exception as error:
+        log_public_data_content_collection_failure(
+            source_name=source_collector.source_name,
+            error=error,
+        )
+        return []
+
+
+def log_public_data_content_collection_failure(
+    *,
+    source_name: str,
+    error: Exception,
+) -> None:
+    print(f"공공정보 수집 실패: {source_name} - {error}")
 
 
 def collect_daegu_public_recruitment_candidates() -> list[ContentCandidate]:
@@ -88,5 +139,3 @@ def collect_daegu_notice_based_candidates() -> list[ContentCandidate]:
     ]
 
     return business_support_candidates + public_opportunity_candidates
-
-
