@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import feedparser
-import requests
+from sources.rss_fetcher import fetch_rss_feed_safely
 
 
 DAEGU_NOTICE_SOURCE_NAME = "대구시청 공지사항"
 DAEGU_NOTICE_RSS_URL = "http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00029"
-REQUEST_TIMEOUT_SECONDS = 30
 
 
 @dataclass(frozen=True)
@@ -21,14 +19,16 @@ class DaeguNotice:
 
 
 def parse_daegu_notice_rss_feed():
-    response = requests.get(DAEGU_NOTICE_RSS_URL, timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-
-    return feedparser.parse(response.content)
+    return fetch_rss_feed_safely(
+        feed_url=DAEGU_NOTICE_RSS_URL,
+        source_name=DAEGU_NOTICE_SOURCE_NAME,
+    )
 
 
 def fetch_daegu_notices() -> list[DaeguNotice]:
     parsed_feed = parse_daegu_notice_rss_feed()
+    if parsed_feed is None:
+        return []
 
     notices: list[DaeguNotice] = []
     seen_source_urls: set[str] = set()

@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import feedparser
-import requests
+from sources.rss_fetcher import fetch_rss_feed_safely
 
 
 DAEGU_RECRUITMENT_CATEGORY = "대구 채용·시험"
 DAEGU_RECRUITMENT_SECTION = "공공"
-REQUEST_TIMEOUT_SECONDS = 30
 
 
 @dataclass(frozen=True)
@@ -52,10 +50,10 @@ DAEGU_PUBLIC_RECRUITMENT_RSS_FEEDS = [
 
 
 def parse_recruitment_rss_feed(feed_url: str):
-    response = requests.get(feed_url, timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-
-    return feedparser.parse(response.content)
+    return fetch_rss_feed_safely(
+        feed_url=feed_url,
+        source_name="대구 채용·시험 공공 RSS",
+    )
 
 
 def fetch_daegu_public_recruitment_notices() -> list[DaeguPublicRecruitmentNotice]:
@@ -64,6 +62,8 @@ def fetch_daegu_public_recruitment_notices() -> list[DaeguPublicRecruitmentNotic
 
     for rss_feed in DAEGU_PUBLIC_RECRUITMENT_RSS_FEEDS:
         parsed_feed = parse_recruitment_rss_feed(rss_feed.feed_url)
+        if parsed_feed is None:
+            continue
 
         for entry in parsed_feed.entries:
             title = str(getattr(entry, "title", "")).strip()
