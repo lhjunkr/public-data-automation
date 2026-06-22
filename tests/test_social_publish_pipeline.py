@@ -10,7 +10,10 @@ from publishing.publish_result import (
     build_failed_publish_result,
     build_success_publish_result,
 )
-from publishing.social_publish_pipeline import publish_prepared_post_to_social_channels
+from publishing.social_publish_pipeline import (
+    SocialPublisher,
+    publish_prepared_post_to_social_channels,
+)
 
 
 class TestSocialPublishPipeline(unittest.TestCase):
@@ -19,10 +22,10 @@ class TestSocialPublishPipeline(unittest.TestCase):
 
         publish_results = publish_prepared_post_to_social_channels(
             prepared_post=prepared_post,
-            publish_functions=(
-                fake_success_facebook_publish,
-                fake_success_instagram_publish,
-                fake_success_threads_publish,
+            publishers=(
+                make_test_publisher("facebook", fake_success_facebook_publish),
+                make_test_publisher("instagram", fake_success_instagram_publish),
+                make_test_publisher("threads", fake_success_threads_publish),
             ),
         )
 
@@ -40,10 +43,10 @@ class TestSocialPublishPipeline(unittest.TestCase):
 
         publish_results = publish_prepared_post_to_social_channels(
             prepared_post=prepared_post,
-            publish_functions=(
-                fake_success_facebook_publish,
-                fake_raising_instagram_publish,
-                fake_success_threads_publish,
+            publishers=(
+                make_test_publisher("facebook", fake_success_facebook_publish),
+                make_test_publisher("instagram", fake_raising_publish),
+                make_test_publisher("threads", fake_success_threads_publish),
             ),
         )
 
@@ -69,10 +72,22 @@ class TestSocialPublishPipeline(unittest.TestCase):
 
         publish_results = publish_prepared_post_to_social_channels(
             prepared_post=prepared_post,
-            publish_functions=(
-                fake_success_facebook_publish,
-                fake_success_instagram_publish,
-                fake_success_threads_publish,
+            publishers=(
+                make_test_publisher(
+                    "facebook",
+                    fake_success_facebook_publish,
+                    enable_env_name="ENABLE_FACEBOOK_PUBLISH",
+                ),
+                make_test_publisher(
+                    "instagram",
+                    fake_success_instagram_publish,
+                    enable_env_name="ENABLE_INSTAGRAM_PUBLISH",
+                ),
+                make_test_publisher(
+                    "threads",
+                    fake_success_threads_publish,
+                    enable_env_name="ENABLE_THREADS_PUBLISH",
+                ),
             ),
         )
 
@@ -109,8 +124,20 @@ def fake_success_threads_publish(prepared_post: PreparedPost):
     )
 
 
-def fake_raising_instagram_publish(prepared_post: PreparedPost):
+def fake_raising_publish(prepared_post: PreparedPost):
     raise RuntimeError("Instagram API error")
+
+
+def make_test_publisher(
+    channel_name: str,
+    publish_function,
+    enable_env_name: str | None = None,
+) -> SocialPublisher:
+    return SocialPublisher(
+        channel_name=channel_name,
+        publish=publish_function,
+        enable_env_name=enable_env_name,
+    )
 
 
 def make_prepared_post() -> PreparedPost:
@@ -137,5 +164,3 @@ def make_prepared_post() -> PreparedPost:
 
 if __name__ == "__main__":
     unittest.main()
-    
-    

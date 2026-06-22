@@ -8,7 +8,7 @@ from publishing.prepared_post import PreparedPost
 from publishing.publish_result import PublishResult
 from publishing.social_publish_pipeline import (
     DEFAULT_SOCIAL_PUBLISHERS,
-    PublishFunction,
+    SocialPublisher,
     publish_prepared_post_to_social_channels,
 )
 from storage.posted_history import (
@@ -31,7 +31,7 @@ def publish_daily_posts_to_social_channels(
     today: date | None = None,
     sync_posted_history: bool = True,
     upload_assets: bool = True,
-    publish_functions: tuple[PublishFunction, ...] = DEFAULT_SOCIAL_PUBLISHERS,
+    publishers: tuple[SocialPublisher, ...] = DEFAULT_SOCIAL_PUBLISHERS,
     record_posted_history: bool = True,
     upload_posted_history: bool = True,
 ) -> list[DailySocialPublishResult]:
@@ -44,7 +44,7 @@ def publish_daily_posts_to_social_channels(
 
     daily_publish_results = publish_prepared_posts_to_social_channels(
         prepared_posts=prepared_posts,
-        publish_functions=publish_functions,
+        publishers=publishers,
     )
 
     if record_posted_history:
@@ -63,14 +63,14 @@ def publish_daily_posts_to_social_channels(
 def publish_prepared_posts_to_social_channels(
     *,
     prepared_posts: list[PreparedPost],
-    publish_functions: tuple[PublishFunction, ...] = DEFAULT_SOCIAL_PUBLISHERS,
+    publishers: tuple[SocialPublisher, ...] = DEFAULT_SOCIAL_PUBLISHERS,
 ) -> list[DailySocialPublishResult]:
     daily_publish_results: list[DailySocialPublishResult] = []
 
     for prepared_post in prepared_posts:
         publish_results = publish_prepared_post_to_social_channels(
             prepared_post=prepared_post,
-            publish_functions=publish_functions,
+            publishers=publishers,
         )
         daily_publish_results.append(
             DailySocialPublishResult(

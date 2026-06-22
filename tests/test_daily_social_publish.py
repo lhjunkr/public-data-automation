@@ -16,6 +16,7 @@ from publishing.publish_result import (
     build_failed_publish_result,
     build_success_publish_result,
 )
+from publishing.social_publish_pipeline import SocialPublisher
 from storage.posted_history import POST_STATUS_PARTIAL_FAILED, POST_STATUS_PUBLISHED
 
 
@@ -41,7 +42,7 @@ class TestDailySocialPublish(unittest.TestCase):
             today=date(2026, 6, 22),
             sync_posted_history=True,
             upload_assets=True,
-            publish_functions=(fake_success_facebook_publish,),
+            publishers=(make_test_publisher("facebook", fake_success_facebook_publish),),
         )
 
         mock_prepare_daily_posts.assert_called_once_with(
@@ -86,7 +87,7 @@ class TestDailySocialPublish(unittest.TestCase):
 
         publish_daily_posts_to_social_channels(
             today=date(2026, 6, 22),
-            publish_functions=(fake_success_facebook_publish,),
+            publishers=(make_test_publisher("facebook", fake_success_facebook_publish),),
             record_posted_history=False,
         )
 
@@ -104,9 +105,9 @@ class TestDailySocialPublish(unittest.TestCase):
 
         daily_publish_results = publish_prepared_posts_to_social_channels(
             prepared_posts=prepared_posts,
-            publish_functions=(
-                fake_success_facebook_publish,
-                fake_success_instagram_publish,
+            publishers=(
+                make_test_publisher("facebook", fake_success_facebook_publish),
+                make_test_publisher("instagram", fake_success_instagram_publish),
             ),
         )
 
@@ -229,6 +230,13 @@ def fake_failed_naver_band_publish(prepared_post: PreparedPost):
     return build_failed_publish_result(
         channel_name="naver_band",
         error_message="Naver Band failed.",
+    )
+
+
+def make_test_publisher(channel_name: str, publish_function) -> SocialPublisher:
+    return SocialPublisher(
+        channel_name=channel_name,
+        publish=publish_function,
     )
 
 
