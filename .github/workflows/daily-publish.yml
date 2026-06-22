@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      TZ: Asia/Seoul
+
       ENABLE_FACEBOOK_PUBLISH: "true"
       ENABLE_INSTAGRAM_PUBLISH: "true"
       ENABLE_THREADS_PUBLISH: "true"

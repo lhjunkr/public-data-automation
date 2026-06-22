@@ -16,6 +16,7 @@ from storage.posted_history import (
     POST_STATUS_PUBLISHED,
     PostedHistoryRecord,
     append_posted_history_records,
+    cleanup_old_r2_posted_history,
     upload_today_posted_history_to_r2,
 )
 
@@ -54,6 +55,7 @@ def publish_daily_posts_to_social_channels(
 
         if upload_posted_history:
             upload_today_posted_history_to_r2(run_date=run_date.isoformat())
+            cleanup_old_r2_posted_history(today=run_date)
 
     return daily_publish_results
 
@@ -154,4 +156,3 @@ def find_remote_post_id(
             return publish_result.remote_post_id
 
     return ""
-

@@ -19,6 +19,7 @@ from storage.posted_history import POST_STATUS_PARTIAL_FAILED, POST_STATUS_PUBLI
 
 
 class TestDailySocialPublish(unittest.TestCase):
+    @patch("pipeline.daily_social_publish.cleanup_old_r2_posted_history")
     @patch("pipeline.daily_social_publish.upload_today_posted_history_to_r2")
     @patch("pipeline.daily_social_publish.append_posted_history_records")
     @patch("pipeline.daily_social_publish.prepare_daily_posts")
@@ -27,6 +28,7 @@ class TestDailySocialPublish(unittest.TestCase):
         mock_prepare_daily_posts,
         mock_append_posted_history_records,
         mock_upload_today_posted_history_to_r2,
+        mock_cleanup_old_r2_posted_history,
     ) -> None:
         prepared_posts = [
             make_prepared_post(title="첫 번째 공고"),
@@ -62,7 +64,11 @@ class TestDailySocialPublish(unittest.TestCase):
         mock_upload_today_posted_history_to_r2.assert_called_once_with(
             run_date="2026-06-22"
         )
+        mock_cleanup_old_r2_posted_history.assert_called_once_with(
+            today=date(2026, 6, 22)
+        )
 
+    @patch("pipeline.daily_social_publish.cleanup_old_r2_posted_history")
     @patch("pipeline.daily_social_publish.upload_today_posted_history_to_r2")
     @patch("pipeline.daily_social_publish.append_posted_history_records")
     @patch("pipeline.daily_social_publish.prepare_daily_posts")
@@ -71,6 +77,7 @@ class TestDailySocialPublish(unittest.TestCase):
         mock_prepare_daily_posts,
         mock_append_posted_history_records,
         mock_upload_today_posted_history_to_r2,
+        mock_cleanup_old_r2_posted_history,
     ) -> None:
         mock_prepare_daily_posts.return_value = [
             make_prepared_post(title="첫 번째 공고"),
@@ -84,6 +91,7 @@ class TestDailySocialPublish(unittest.TestCase):
 
         mock_append_posted_history_records.assert_not_called()
         mock_upload_today_posted_history_to_r2.assert_not_called()
+        mock_cleanup_old_r2_posted_history.assert_not_called()
 
     def test_publish_prepared_posts_to_social_channels_publishes_each_post(
         self,
@@ -241,5 +249,5 @@ def make_prepared_post(title: str) -> PreparedPost:
 
 if __name__ == "__main__":
     unittest.main()
-    
-    
+
+
