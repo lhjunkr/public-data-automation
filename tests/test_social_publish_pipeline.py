@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import unittest
+from unittest.mock import patch
 
 from content.post_content import PostContent
 from publishing.prepared_post import PreparedPost
@@ -51,6 +53,33 @@ class TestSocialPublishPipeline(unittest.TestCase):
         self.assertTrue(publish_results[2].is_success)
         self.assertEqual(publish_results[1].channel_name, "instagram")
         self.assertIn("Instagram API error", publish_results[1].error_message or "")
+
+    @patch.dict(
+        os.environ,
+        {
+            "ENABLE_FACEBOOK_PUBLISH": "true",
+            "ENABLE_INSTAGRAM_PUBLISH": "false",
+            "ENABLE_THREADS_PUBLISH": "true",
+        },
+    )
+    def test_publish_prepared_post_to_social_channels_skips_disabled_channels(
+        self,
+    ) -> None:
+        prepared_post = make_prepared_post()
+
+        publish_results = publish_prepared_post_to_social_channels(
+            prepared_post=prepared_post,
+            publish_functions=(
+                fake_success_facebook_publish,
+                fake_success_instagram_publish,
+                fake_success_threads_publish,
+            ),
+        )
+
+        self.assertEqual(
+            [publish_result.channel_name for publish_result in publish_results],
+            ["facebook", "threads"],
+        )
 
 
 def fake_success_facebook_publish(prepared_post: PreparedPost):
