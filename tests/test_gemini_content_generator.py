@@ -68,7 +68,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
         self.assertEqual(enhanced_post_content.image_text_lines, ["AI 헤더", "AI 제목"])
         self.assertEqual(
             enhanced_post_content.hashtags,
-            ["대구", "공공정보", "대구창업지원", "창업지원사업"],
+            ["대구", "창업", "사업", "지원"],
         )
         self.assertEqual(enhanced_post_content.source_url, original_post_content.source_url)
 
@@ -123,7 +123,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
         )
         self.assertEqual(
             enhanced_post_content.hashtags,
-            ["대구", "공공정보", "대구창업지원", "창업지원사업"],
+            ["대구", "창업", "사업", "지원"],
         )
 
     def test_build_enhanced_post_content_falls_back_when_image_text_is_invalid(

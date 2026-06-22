@@ -30,7 +30,7 @@ class TestPostContentBuilder(unittest.TestCase):
         self.assertIn("⏰ 마감일: 2026.07.07", post_content.caption)
         self.assertIn("🏛️ 출처: 테스트 출처", post_content.caption)
         self.assertIn("🔗 자세히 보기\nhttps://example.com/startup", post_content.caption)
-        self.assertIn("#대구 #공공정보 #대구창업지원 #창업지원사업", post_content.caption)
+        self.assertIn("#대구 #창업 #사업 #지원", post_content.caption)
         self.assertEqual(post_content.raw_candidate, candidate)
 
     def test_build_post_content_uses_published_at_when_deadline_is_empty(self) -> None:
@@ -57,9 +57,9 @@ class TestPostContentBuilder(unittest.TestCase):
             hashtags,
             [
                 "대구",
-                "공공정보",
-                "대구기업지원",
-                "기업지원사업",
+                "기업",
+                "사업",
+                "지원",
             ],
         )
 
