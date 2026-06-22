@@ -15,6 +15,11 @@ KSTARTUP_API_BASE_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01"
 KSTARTUP_PER_PAGE = 100
 KSTARTUP_MAX_PAGES = 10
 REQUEST_TIMEOUT_SECONDS = 30
+KSTARTUP_FALLBACK_EXCEPTIONS = (
+    requests.RequestException,
+    ValueError,
+    RuntimeError,
+)
 
 KSTARTUP_ENDPOINTS = [
     {
@@ -109,12 +114,20 @@ def fetch_kstartup_endpoint_items(
     current_page = 1
 
     while current_page <= KSTARTUP_MAX_PAGES:
-        page_items = fetch_kstartup_endpoint_page(
-            api_key=api_key,
-            request_url=request_url,
-            source_type=source_type,
-            page=current_page,
-        )
+        try:
+            page_items = fetch_kstartup_endpoint_page(
+                api_key=api_key,
+                request_url=request_url,
+                source_type=source_type,
+                page=current_page,
+            )
+        except KSTARTUP_FALLBACK_EXCEPTIONS as error:
+            log_kstartup_fetch_failure(
+                source_type=source_type,
+                page=current_page,
+                error=error,
+            )
+            break
 
         if not page_items:
             break
@@ -141,6 +154,15 @@ def fetch_kstartup_endpoint_items(
         current_page += 1
 
     return all_items
+
+
+def log_kstartup_fetch_failure(
+    *,
+    source_type: str,
+    page: int,
+    error: Exception,
+) -> None:
+    print(f"K-Startup 수집 실패: {source_type} {page}페이지 - {error}")
 
 
 def fetch_kstartup_endpoint_page(
