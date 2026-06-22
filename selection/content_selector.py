@@ -96,6 +96,9 @@ def fill_remaining_slots(
     candidates: list[ContentCandidate],
     selected_candidates: list[ContentCandidate],
 ) -> list[ContentCandidate]:
+    if count_unique_categories(candidates) < 2:
+        return selected_candidates
+
     selected_source_urls = {
         selected_candidate.source_url for selected_candidate in selected_candidates
     }
@@ -118,6 +121,10 @@ def fill_remaining_slots(
         selected_category_counts[candidate.category] += 1
 
     return selected_candidates
+
+
+def count_unique_categories(candidates: list[ContentCandidate]) -> int:
+    return len({candidate.category for candidate in candidates})
 
 
 def parse_date(raw_date: str) -> date | None:

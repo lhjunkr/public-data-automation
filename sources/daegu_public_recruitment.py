@@ -28,23 +28,23 @@ class DaeguPublicRecruitmentNotice:
 DAEGU_PUBLIC_RECRUITMENT_RSS_FEEDS = [
     DaeguRecruitmentRssFeed(
         source_name="공채/경채 공무원",
-        feed_url="http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02086",
+        feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02086",
     ),
     DaeguRecruitmentRssFeed(
         source_name="임기제/별정직 공무원",
-        feed_url="http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02087",
+        feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02087",
     ),
     DaeguRecruitmentRssFeed(
         source_name="청원경찰",
-        feed_url="http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02154",
+        feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02154",
     ),
     DaeguRecruitmentRssFeed(
         source_name="개방형직위",
-        feed_url="http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02088",
+        feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02088",
     ),
     DaeguRecruitmentRssFeed(
         source_name="중앙 및 타기관 채용소식",
-        feed_url="http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00064",
+        feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00064",
     ),
 ]
 

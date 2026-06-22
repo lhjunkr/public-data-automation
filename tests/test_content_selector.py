@@ -148,7 +148,7 @@ class TestContentSelector(unittest.TestCase):
             ["창업 최신 공고", "기업 최신 공고", "창업 추가 공고"],
         )
 
-    def test_does_not_select_more_than_two_candidates_per_category(self) -> None:
+    def test_selects_only_one_candidate_when_only_one_category_is_available(self) -> None:
         candidates = [
             make_candidate(
                 category="대구 창업지원",
@@ -165,10 +165,42 @@ class TestContentSelector(unittest.TestCase):
             today=date(2026, 6, 21),
         )
 
-        self.assertEqual(len(selected_candidates), 2)
-        self.assertTrue(
-            all(candidate.category == "대구 창업지원" for candidate in selected_candidates)
+        self.assertEqual(len(selected_candidates), 1)
+        self.assertEqual(selected_candidates[0].category, "대구 창업지원")
+
+    def test_does_not_select_more_than_two_candidates_per_category_when_filling_slots(
+        self,
+    ) -> None:
+        candidates = [
+            make_candidate(
+                category="대구 창업지원",
+                title=f"창업 공고 {candidate_number}",
+                source_url=f"https://example.com/startup-{candidate_number}",
+                published_at=f"2026-06-2{candidate_number}",
+            )
+            for candidate_number in range(1, 4)
+        ]
+        candidates.append(
+            make_candidate(
+                category="대구 기업지원",
+                title="기업 공고",
+                source_url="https://example.com/business",
+                published_at="2026-06-21",
+            )
         )
+
+        selected_candidates = select_daily_content_candidates(
+            candidates=candidates,
+            posted_source_urls=set(),
+            today=date(2026, 6, 21),
+        )
+
+        selected_startup_count = sum(
+            candidate.category == "대구 창업지원"
+            for candidate in selected_candidates
+        )
+
+        self.assertEqual(selected_startup_count, 2)
 
     def test_sorts_by_latest_published_at(self) -> None:
         candidates = [

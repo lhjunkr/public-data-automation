@@ -6,7 +6,7 @@ from sources.rss_fetcher import fetch_rss_feed_safely
 
 
 DAEGU_NOTICE_SOURCE_NAME = "대구시청 공지사항"
-DAEGU_NOTICE_RSS_URL = "http://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00029"
+DAEGU_NOTICE_RSS_URL = "https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00029"
 
 
 @dataclass(frozen=True)
