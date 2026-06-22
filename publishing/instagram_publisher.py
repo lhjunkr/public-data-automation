@@ -60,6 +60,12 @@ def publish_prepared_post_to_instagram(prepared_post: PreparedPost) -> PublishRe
         )
 
     remote_post_id = extract_instagram_remote_post_id(publish_payload)
+    if not remote_post_id:
+        return build_failed_publish_result(
+            channel_name=INSTAGRAM_CHANNEL_NAME,
+            error_message="Instagram media publish did not return post id.",
+            raw_response=publish_payload,
+        )
 
     return build_success_publish_result(
         channel_name=INSTAGRAM_CHANNEL_NAME,
@@ -165,4 +171,3 @@ def get_required_environment_value(environment_name: str) -> str:
         return environment_value
 
     raise RuntimeError(f"{environment_name} environment variable is required.")
-

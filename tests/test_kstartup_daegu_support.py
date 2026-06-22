@@ -89,6 +89,39 @@ class TestKStartupDaeguSupportFallback(unittest.TestCase):
         self.assertEqual(support_items[0].source_type, "창업관련 통계보고서")
         mock_print.assert_called_once()
 
+    @patch("sources.kstartup_daegu_support.get_kstartup_api_key")
+    @patch("sources.kstartup_daegu_support.fetch_kstartup_endpoint_page")
+    def test_fetch_kstartup_daegu_support_items_skips_items_without_title_or_url(
+        self,
+        mock_fetch_kstartup_endpoint_page,
+        mock_get_kstartup_api_key,
+    ) -> None:
+        mock_get_kstartup_api_key.return_value = "api-key"
+        item_without_title = make_raw_kstartup_item(
+            title="",
+            source_url="https://example.com/no-title",
+        )
+        item_without_url = make_raw_kstartup_item(
+            title="대구 창업기업 모집",
+            source_url="",
+        )
+        valid_item = make_raw_kstartup_item(
+            title="대구 창업지원 공고",
+            source_url="https://example.com/valid",
+        )
+        mock_fetch_kstartup_endpoint_page.side_effect = [
+            [item_without_title, item_without_url, valid_item],
+            [],
+            [],
+            [],
+        ]
+
+        support_items = fetch_kstartup_daegu_support_items()
+
+        self.assertEqual(len(support_items), 1)
+        self.assertEqual(support_items[0].title, "대구 창업지원 공고")
+        self.assertEqual(support_items[0].source_url, "https://example.com/valid")
+
 
 def make_raw_kstartup_item(title: str, source_url: str) -> dict[str, str]:
     return {

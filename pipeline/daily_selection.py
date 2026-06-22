@@ -4,6 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
+import requests
+
 from selection.content_candidate import ContentCandidate
 from selection.content_candidate_adapters import (
     business_notice_to_candidate,
@@ -25,6 +27,9 @@ from storage.posted_history import (
 
 
 ContentCandidateCollector = Callable[[], list[ContentCandidate]]
+SOURCE_COLLECTION_FALLBACK_EXCEPTIONS = (
+    requests.RequestException,
+)
 
 
 @dataclass(frozen=True)
@@ -89,7 +94,7 @@ def safely_collect_public_data_content_candidates(
 ) -> list[ContentCandidate]:
     try:
         return source_collector.collect_candidates()
-    except Exception as error:
+    except SOURCE_COLLECTION_FALLBACK_EXCEPTIONS as error:
         log_public_data_content_collection_failure(
             source_name=source_collector.source_name,
             error=error,

@@ -203,6 +203,17 @@ def wrap_text(
 
         if current_line:
             wrapped_lines.append(current_line.rstrip())
+            current_line = ""
+
+        if get_text_width(word, font) > max_width:
+            wrapped_lines.extend(
+                split_oversized_word_by_width(
+                    text=word.strip(),
+                    font=font,
+                    max_width=max_width,
+                )
+            )
+            continue
 
         current_line = word
 
@@ -210,6 +221,32 @@ def wrap_text(
         wrapped_lines.append(current_line.rstrip())
 
     return wrapped_lines
+
+
+def split_oversized_word_by_width(
+    text: str,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    max_width: int,
+) -> list[str]:
+    split_lines: list[str] = []
+    current_line = ""
+
+    for character in text:
+        candidate_line = f"{current_line}{character}"
+
+        if get_text_width(candidate_line, font) <= max_width:
+            current_line = candidate_line
+            continue
+
+        if current_line:
+            split_lines.append(current_line)
+
+        current_line = character
+
+    if current_line:
+        split_lines.append(current_line)
+
+    return split_lines
 
 
 def split_text_for_wrapping(text: str) -> list[str]:

@@ -11,8 +11,11 @@ from image.card_renderer import (
     BACKGROUND_COLORS,
     CARD_HEIGHT,
     CARD_WIDTH,
+    get_text_width,
+    load_korean_font,
     normalize_image_text_lines,
     render_post_content_card,
+    wrap_text,
 )
 
 
@@ -60,6 +63,21 @@ class TestCardRenderer(unittest.TestCase):
             ["대구", "공고"],
         )
 
+    def test_wrap_text_splits_oversized_word_by_width(self) -> None:
+        font = load_korean_font(font_size=32)
+        max_width = 120
+
+        wrapped_lines = wrap_text(
+            text="대구창업지원사업공고초장문텍스트",
+            font=font,
+            max_width=max_width,
+        )
+
+        self.assertGreater(len(wrapped_lines), 1)
+        self.assertTrue(
+            all(get_text_width(wrapped_line, font) <= max_width for wrapped_line in wrapped_lines)
+        )
+
 
 def make_post_content(category: str = "대구 창업지원") -> PostContent:
     return PostContent(
@@ -94,5 +112,3 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 
 if __name__ == "__main__":
     unittest.main()
-    
-    

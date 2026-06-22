@@ -41,6 +41,12 @@ def publish_prepared_post_to_facebook(prepared_post: PreparedPost) -> PublishRes
         )
 
     remote_post_id = extract_facebook_remote_post_id(response_payload)
+    if not remote_post_id:
+        return build_failed_publish_result(
+            channel_name=FACEBOOK_CHANNEL_NAME,
+            error_message="Facebook photo post did not return post id.",
+            raw_response=response_payload,
+        )
 
     return build_success_publish_result(
         channel_name=FACEBOOK_CHANNEL_NAME,
@@ -132,4 +138,3 @@ def get_required_environment_value(environment_name: str) -> str:
         return environment_value
 
     raise RuntimeError(f"{environment_name} environment variable is required.")
-

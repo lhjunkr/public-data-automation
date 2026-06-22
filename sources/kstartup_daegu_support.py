@@ -84,12 +84,15 @@ def fetch_kstartup_daegu_support_items() -> list[KStartupDaeguSupportItem]:
             if not is_daegu_relevant_item(raw_item):
                 continue
 
-            support_items.append(
-                normalize_kstartup_item(
-                    source_type=endpoint["source_type"],
-                    raw_item=raw_item,
-                )
+            support_item = normalize_kstartup_item(
+                source_type=endpoint["source_type"],
+                raw_item=raw_item,
             )
+
+            if not is_valid_kstartup_support_item(support_item):
+                continue
+
+            support_items.append(support_item)
 
     return support_items
 
@@ -307,6 +310,12 @@ def normalize_kstartup_item(
         contact=contact,
         raw_payload=raw_item,
     )
+
+
+def is_valid_kstartup_support_item(
+    support_item: KStartupDaeguSupportItem,
+) -> bool:
+    return bool(support_item.title and support_item.source_url)
 
 
 def first_non_empty_value(raw_item: dict[str, Any], field_names: list[str]) -> str:

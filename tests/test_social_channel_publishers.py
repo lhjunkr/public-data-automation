@@ -92,6 +92,28 @@ class TestFacebookPublisher(unittest.TestCase):
         self.assertEqual(publish_result.channel_name, "facebook")
         self.assertEqual(publish_result.error_message, "Invalid Facebook token.")
 
+    @patch.dict(
+        os.environ,
+        {
+            "FACEBOOK_PAGE_ID": "facebook-page-id",
+            "FACEBOOK_PAGE_ACCESS_TOKEN": "facebook-page-token",
+        },
+    )
+    @patch("publishing.facebook_publisher.requests.post")
+    def test_publish_prepared_post_to_facebook_requires_remote_post_id(
+        self,
+        mock_post,
+    ) -> None:
+        mock_post.return_value = FakeResponse(status_code=200, payload={})
+
+        publish_result = publish_prepared_post_to_facebook(make_prepared_post())
+
+        self.assertFalse(publish_result.is_success)
+        self.assertEqual(
+            publish_result.error_message,
+            "Facebook photo post did not return post id.",
+        )
+
     @patch.dict(os.environ, {}, clear=True)
     def test_publish_prepared_post_to_facebook_requires_environment_values(
         self,
@@ -165,6 +187,31 @@ class TestInstagramPublisher(unittest.TestCase):
         self.assertEqual(publish_result.channel_name, "instagram")
         self.assertEqual(publish_result.error_message, "Invalid image URL.")
         self.assertEqual(mock_post.call_count, 1)
+
+    @patch.dict(
+        os.environ,
+        {
+            "IG_USER_ID": "instagram-user-id",
+            "META_ACCESS_TOKEN": "meta-access-token",
+        },
+    )
+    @patch("publishing.instagram_publisher.requests.post")
+    def test_publish_prepared_post_to_instagram_requires_publish_post_id(
+        self,
+        mock_post,
+    ) -> None:
+        mock_post.side_effect = [
+            FakeResponse(status_code=200, payload={"id": "creation-id"}),
+            FakeResponse(status_code=200, payload={}),
+        ]
+
+        publish_result = publish_prepared_post_to_instagram(make_prepared_post())
+
+        self.assertFalse(publish_result.is_success)
+        self.assertEqual(
+            publish_result.error_message,
+            "Instagram media publish did not return post id.",
+        )
 
     @patch.dict(os.environ, {}, clear=True)
     def test_publish_prepared_post_to_instagram_requires_environment_values(
@@ -244,6 +291,31 @@ class TestThreadsPublisher(unittest.TestCase):
         self.assertEqual(publish_result.channel_name, "threads")
         self.assertEqual(publish_result.error_message, "Threads token expired.")
         self.assertEqual(mock_post.call_count, 1)
+
+    @patch.dict(
+        os.environ,
+        {
+            "THREADS_USER_ID": "threads-user-id",
+            "THREADS_ACCESS_TOKEN": "threads-access-token",
+        },
+    )
+    @patch("publishing.threads_publisher.requests.post")
+    def test_publish_prepared_post_to_threads_requires_publish_post_id(
+        self,
+        mock_post,
+    ) -> None:
+        mock_post.side_effect = [
+            FakeResponse(status_code=200, payload={"id": "creation-id"}),
+            FakeResponse(status_code=200, payload={}),
+        ]
+
+        publish_result = publish_prepared_post_to_threads(make_prepared_post())
+
+        self.assertFalse(publish_result.is_success)
+        self.assertEqual(
+            publish_result.error_message,
+            "Threads media publish did not return post id.",
+        )
 
     @patch.dict(os.environ, {}, clear=True)
     def test_publish_prepared_post_to_threads_requires_environment_values(

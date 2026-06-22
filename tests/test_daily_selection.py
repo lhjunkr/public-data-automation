@@ -4,6 +4,8 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
+import requests
+
 from pipeline.daily_selection import (
     collect_daegu_notice_based_candidates,
     collect_public_data_content_candidates,
@@ -129,7 +131,7 @@ class TestDailySelection(unittest.TestCase):
         )
 
         mock_collect_recruitment_candidates.return_value = [recruitment_candidate]
-        mock_collect_kstartup_candidates.side_effect = RuntimeError(
+        mock_collect_kstartup_candidates.side_effect = requests.exceptions.Timeout(
             "K-Startup API error"
         )
         mock_collect_notice_based_candidates.return_value = [notice_candidate]
@@ -140,6 +142,19 @@ class TestDailySelection(unittest.TestCase):
         mock_print.assert_called_once_with(
             "공공정보 수집 실패: 대구 창업지원 K-Startup API - K-Startup API error"
         )
+
+    @patch("pipeline.daily_selection.collect_kstartup_daegu_support_candidates")
+    @patch("pipeline.daily_selection.collect_daegu_public_recruitment_candidates")
+    def test_collect_public_data_content_candidates_does_not_hide_programming_errors(
+        self,
+        mock_collect_recruitment_candidates,
+        mock_collect_kstartup_candidates,
+    ) -> None:
+        mock_collect_recruitment_candidates.return_value = []
+        mock_collect_kstartup_candidates.side_effect = RuntimeError("code bug")
+
+        with self.assertRaisesRegex(RuntimeError, "code bug"):
+            collect_public_data_content_candidates()
 
 
 def make_daegu_notice(title: str, source_url: str) -> DaeguNotice:
