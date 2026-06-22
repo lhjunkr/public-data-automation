@@ -24,8 +24,13 @@ class TestPostContentBuilder(unittest.TestCase):
         self.assertEqual(post_content.category, "대구 창업지원")
         self.assertEqual(post_content.title, "2026년 대구 창업기업 모집")
         self.assertEqual(post_content.source_url, "https://example.com/startup")
-        self.assertIn("마감일: 2026.07.07", post_content.caption)
-        self.assertIn("#대구창업", post_content.caption)
+        self.assertIn("📌 [대구 창업지원]", post_content.caption)
+        self.assertIn("✅ 핵심 내용", post_content.caption)
+        self.assertIn("- 테스트 요약", post_content.caption)
+        self.assertIn("⏰ 마감일: 2026.07.07", post_content.caption)
+        self.assertIn("🏛️ 출처: 테스트 출처", post_content.caption)
+        self.assertIn("🔗 자세히 보기\nhttps://example.com/startup", post_content.caption)
+        self.assertIn("#대구 #공공정보 #대구창업지원 #창업지원사업", post_content.caption)
         self.assertEqual(post_content.raw_candidate, candidate)
 
     def test_build_post_content_uses_published_at_when_deadline_is_empty(self) -> None:
@@ -40,10 +45,10 @@ class TestPostContentBuilder(unittest.TestCase):
         post_content = build_post_content_from_candidate(candidate)
 
         self.assertIn(
-            "게시일: 2026.06.21",
+            "🗓️ 게시일: 2026.06.21",
             post_content.caption,
         )
-        self.assertIn("게시일: 2026.06.21", post_content.image_text_lines)
+        self.assertIn("🗓️ 게시일: 2026.06.21", post_content.image_text_lines)
         
     def test_build_hashtags_combines_default_and_category_hashtags(self) -> None:
         hashtags = build_hashtags("대구 기업지원")
@@ -53,11 +58,8 @@ class TestPostContentBuilder(unittest.TestCase):
             [
                 "대구",
                 "공공정보",
-                "대구정보",
-                "공공데이터",
                 "대구기업지원",
-                "중소기업지원",
-                "소상공인",
+                "기업지원사업",
             ],
         )
 

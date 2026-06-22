@@ -9,7 +9,7 @@ from google.genai import types
 
 from content.date_formatting import format_display_date
 from content.post_content import PostContent
-from content.post_content_builder import format_hashtags
+from content.post_content_builder import build_hashtags, format_hashtags
 
 
 GEMINI_API_KEY_ENV_NAME = "GEMINI_API_KEY"
@@ -19,7 +19,6 @@ MAX_DESCRIPTION_LINES = 3
 MAX_DESCRIPTION_LINE_LENGTH = 90
 MAX_IMAGE_TEXT_LINES = 4
 MAX_IMAGE_TEXT_LINE_LENGTH = 28
-MAX_HASHTAGS = 8
 DESCRIPTION_RISKY_EXPANSION_KEYWORDS = [
     "수도권",
     "비수도권",
@@ -164,9 +163,7 @@ def build_enhanced_post_content(
         generated_payload.get("image_text_lines")
     )
     validated_image_text_lines = validate_image_text_lines(generated_image_text_lines)
-    generated_hashtags = clean_generated_hashtags(generated_payload.get("hashtags"))
-
-    final_hashtags = generated_hashtags or original_post_content.hashtags
+    final_hashtags = build_hashtags(original_post_content.category)
     final_caption = original_post_content.caption
 
     if validated_description_lines:
@@ -198,14 +195,16 @@ def build_final_caption(
     hashtags: list[str],
 ) -> str:
     caption_lines = [
-        f"[{original_post_content.category}]",
+        f"📌 [{original_post_content.category}]",
         original_post_content.title,
         "",
-        *description_lines,
+        "✅ 핵심 내용",
+        *[f"- {description_line}" for description_line in description_lines],
         "",
         build_period_line_from_post_content(original_post_content),
-        f"출처: {original_post_content.source_name}",
-        f"자세히 보기: {original_post_content.source_url}",
+        f"🏛️ 출처: {original_post_content.source_name}",
+        "🔗 자세히 보기",
+        original_post_content.source_url,
         "",
         format_hashtags(hashtags),
     ]
@@ -215,10 +214,10 @@ def build_final_caption(
 
 def build_period_line_from_post_content(post_content: PostContent) -> str:
     if post_content.deadline_at:
-        return f"마감일: {format_display_date(post_content.deadline_at)}"
+        return f"⏰ 마감일: {format_display_date(post_content.deadline_at)}"
 
     if post_content.published_at:
-        return f"게시일: {format_display_date(post_content.published_at)}"
+        return f"🗓️ 게시일: {format_display_date(post_content.published_at)}"
 
     return ""
 
@@ -295,8 +294,5 @@ def clean_generated_hashtags(value: Any) -> list[str]:
 
         if normalized_hashtag and normalized_hashtag not in normalized_hashtags:
             normalized_hashtags.append(normalized_hashtag)
-
-        if len(normalized_hashtags) >= MAX_HASHTAGS:
-            break
 
     return normalized_hashtags

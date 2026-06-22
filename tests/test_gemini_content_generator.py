@@ -61,10 +61,15 @@ class TestGeminiContentGenerator(unittest.TestCase):
 
         self.assertIn("AI가 다듬은 설명입니다.", enhanced_post_content.caption)
         self.assertIn("신청 대상자는 원문 공고를 확인하세요.", enhanced_post_content.caption)
-        self.assertIn("출처: K-Startup", enhanced_post_content.caption)
-        self.assertIn("자세히 보기: https://example.com/startup", enhanced_post_content.caption)
+        self.assertIn("📌 [대구 창업지원]", enhanced_post_content.caption)
+        self.assertIn("✅ 핵심 내용", enhanced_post_content.caption)
+        self.assertIn("🏛️ 출처: K-Startup", enhanced_post_content.caption)
+        self.assertIn("🔗 자세히 보기\nhttps://example.com/startup", enhanced_post_content.caption)
         self.assertEqual(enhanced_post_content.image_text_lines, ["AI 헤더", "AI 제목"])
-        self.assertEqual(enhanced_post_content.hashtags, ["대구", "공공정보"])
+        self.assertEqual(
+            enhanced_post_content.hashtags,
+            ["대구", "공공정보", "대구창업지원", "창업지원사업"],
+        )
         self.assertEqual(enhanced_post_content.source_url, original_post_content.source_url)
 
     def test_build_enhanced_post_content_limits_description_lines(self) -> None:
@@ -116,7 +121,10 @@ class TestGeminiContentGenerator(unittest.TestCase):
             enhanced_post_content.image_text_lines,
             original_post_content.image_text_lines,
         )
-        self.assertEqual(enhanced_post_content.hashtags, original_post_content.hashtags)
+        self.assertEqual(
+            enhanced_post_content.hashtags,
+            ["대구", "공공정보", "대구창업지원", "창업지원사업"],
+        )
 
     def test_build_enhanced_post_content_falls_back_when_image_text_is_invalid(
         self,
@@ -146,7 +154,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
             ["대구", "공공정보"],
         )
 
-    def test_clean_generated_hashtags_limits_count(self) -> None:
+    def test_clean_generated_hashtags_keeps_unique_values(self) -> None:
         self.assertEqual(
             clean_generated_hashtags(
                 [
@@ -161,7 +169,17 @@ class TestGeminiContentGenerator(unittest.TestCase):
                     "태그9",
                 ]
             ),
-            ["태그1", "태그2", "태그3", "태그4", "태그5", "태그6", "태그7", "태그8"],
+            [
+                "태그1",
+                "태그2",
+                "태그3",
+                "태그4",
+                "태그5",
+                "태그6",
+                "태그7",
+                "태그8",
+                "태그9",
+            ],
         )
 
     def test_validate_description_lines_accepts_valid_lines(self) -> None:
