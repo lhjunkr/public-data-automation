@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from datetime import date
 
-from notifications.email_reporter import send_daily_publish_email_report
 from pipeline.daily_social_publish import publish_daily_posts_to_social_channels
 
 
@@ -17,7 +16,6 @@ def main() -> int:
     )
 
     print_daily_publish_results(daily_publish_results)
-    send_email_report_safely(daily_publish_results)
 
     if has_failed_publish_channel(daily_publish_results):
         return 1
@@ -50,13 +48,6 @@ def print_daily_publish_results(daily_publish_results) -> None:
                 print(f"     오류: {publish_result.error_message}")
 
 
-def send_email_report_safely(daily_publish_results) -> None:
-    try:
-        send_daily_publish_email_report(daily_publish_results)
-    except Exception as error:
-        print(f"이메일 발송 실패: {error}")
-
-
 def has_failed_publish_channel(daily_publish_results) -> bool:
     return any(
         not publish_result.is_success
@@ -67,5 +58,3 @@ def has_failed_publish_channel(daily_publish_results) -> bool:
 
 if __name__ == "__main__":
     sys.exit(main())
-    
-    

@@ -37,13 +37,6 @@ jobs:
       THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
       THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
 
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      NOTIFICATION_EMAIL_TO: ${{ secrets.NOTIFICATION_EMAIL_TO }}
-      NOTIFICATION_EMAIL_FROM: ${{ secrets.NOTIFICATION_EMAIL_FROM }}
-
       BAND_ACCESS_TOKEN: ${{ secrets.BAND_ACCESS_TOKEN }}
       BAND_KEY: ${{ secrets.BAND_KEY }}
 
@@ -69,4 +62,3 @@ jobs:
 
       - name: Publish daily posts
         run: python -m scripts.run_daily_publish
-        

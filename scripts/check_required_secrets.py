@@ -15,12 +15,6 @@ ALWAYS_REQUIRED_ENV_NAMES = [
     "R2_ASSETS_SECRET_ACCESS_KEY",
     "R2_ASSETS_BUCKET_NAME",
     "R2_ASSETS_PUBLIC_BASE_URL",
-    "SMTP_HOST",
-    "SMTP_PORT",
-    "SMTP_USERNAME",
-    "SMTP_PASSWORD",
-    "NOTIFICATION_EMAIL_TO",
-    "NOTIFICATION_EMAIL_FROM",
 ]
 
 CHANNEL_REQUIRED_ENV_NAMES = {
@@ -94,5 +88,3 @@ def is_enabled(enable_env_name: str) -> bool:
 
 if __name__ == "__main__":
     sys.exit(main())
-    
-    
