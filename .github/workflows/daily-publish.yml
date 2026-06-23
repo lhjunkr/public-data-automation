@@ -1,6 +1,6 @@
 name: Daily Publish
 
-on:
+"on":
   workflow_dispatch:
   schedule:
     - cron: "7 9 * * *"
