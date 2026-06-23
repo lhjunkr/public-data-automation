@@ -3,7 +3,7 @@ name: Daily Publish
 "on":
   workflow_dispatch:
   schedule:
-    - cron: "7 9 * * *"
+    - cron: "30 8 * * *"
 
 jobs:
   publish:
