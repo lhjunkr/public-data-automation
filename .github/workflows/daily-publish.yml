@@ -1,4 +1,4 @@
-name: Daily Publish
+name: Daily Public Data Automation
 
 "on":
   workflow_dispatch:
@@ -6,8 +6,8 @@ name: Daily Publish
     - cron: "30 8 * * *"
 
 jobs:
-  publish:
-    name: Publish daily public data posts
+  run-public-data-automation:
+    name: Run daily public data automation
     runs-on: ubuntu-latest
 
     env:
