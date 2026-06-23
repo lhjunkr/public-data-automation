@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from selection.content_candidate import ContentCandidate
 from content.date_formatting import format_display_date
 from content.post_content import PostContent
@@ -13,6 +15,9 @@ CATEGORY_HASHTAGS = {
 }
 DEFAULT_HASHTAGS = ["대구", "공공정보", "대구정보", "공공데이터"]
 HASHTAG_COUNT = 4
+CAPTION_SUMMARY_HEADING = "✅ 한눈에 보기"
+CAPTION_BULLET_PREFIX = "• "
+MAX_CAPTION_SUMMARY_LINES = 4
 
 
 def build_post_content_from_candidate(candidate: ContentCandidate) -> PostContent:
@@ -46,21 +51,42 @@ def build_default_caption(
     candidate: ContentCandidate,
     hashtags: list[str],
 ) -> str:
+    return build_caption(
+        category=candidate.category,
+        title=candidate.title,
+        summary_lines=build_caption_summary_lines(candidate.summary),
+        period_line=build_period_line(candidate),
+        source_name=candidate.source_name,
+        source_url=candidate.source_url,
+        hashtags=hashtags,
+    )
+
+
+def build_caption(
+    *,
+    category: str,
+    title: str,
+    summary_lines: list[str],
+    period_line: str,
+    source_name: str,
+    source_url: str,
+    hashtags: list[str],
+) -> str:
     caption_lines = [
-        f"📌 [{candidate.category}]",
-        candidate.title,
+        f"📌 [{category}]",
+        title,
         "",
-        *build_default_summary_lines(candidate),
+        *build_caption_summary_section(summary_lines),
         "",
-        build_period_line(candidate),
-        f"🏛️ 출처: {candidate.source_name}",
-        "🔗 자세히 보기",
-        candidate.source_url,
+        period_line,
+        f"🏛️ 출처: {source_name}",
+        "🔗 원문 보기",
+        source_url,
         "",
         format_hashtags(hashtags),
     ]
 
-    return "\n".join(line for line in caption_lines if line.strip())
+    return join_caption_lines(caption_lines)
 
 
 def build_period_line(candidate: ContentCandidate) -> str:
@@ -87,14 +113,70 @@ def build_image_period_line(candidate: ContentCandidate) -> str:
     return ""
 
 
-def build_default_summary_lines(candidate: ContentCandidate) -> list[str]:
-    if not candidate.summary:
+def build_caption_summary_section(summary_lines: list[str]) -> list[str]:
+    if not summary_lines:
         return []
 
     return [
-        "✅ 핵심 내용",
-        f"- {candidate.summary}",
+        CAPTION_SUMMARY_HEADING,
+        *[f"{CAPTION_BULLET_PREFIX}{summary_line}" for summary_line in summary_lines],
     ]
+
+
+def build_caption_summary_lines(summary: str) -> list[str]:
+    normalized_lines: list[str] = []
+
+    for raw_summary_line in summary.splitlines():
+        summary_line = normalize_caption_summary_line(raw_summary_line)
+
+        if not summary_line:
+            continue
+
+        normalized_lines.append(summary_line)
+
+        if len(normalized_lines) >= MAX_CAPTION_SUMMARY_LINES:
+            break
+
+    return normalized_lines
+
+
+def normalize_caption_summary_line(raw_summary_line: str) -> str:
+    summary_line = raw_summary_line.strip()
+    summary_line = re.sub(r"^[\-•]\s*", "", summary_line)
+    summary_line = re.sub(r"\s+", " ", summary_line)
+    summary_line = re.sub(r"(?<!\d)\s*:\s*(?!\d)", ": ", summary_line)
+    summary_line = re.sub(r"\s+", " ", summary_line).strip()
+
+    if not summary_line:
+        return ""
+
+    if re.fullmatch(r"[^:：]{1,20}[:：]", summary_line):
+        return ""
+
+    return summary_line
+
+
+def join_caption_lines(caption_lines: list[str]) -> str:
+    joined_lines: list[str] = []
+    previous_line_was_blank = False
+
+    for caption_line in caption_lines:
+        normalized_line = caption_line.strip()
+
+        if not normalized_line:
+            if joined_lines and not previous_line_was_blank:
+                joined_lines.append("")
+
+            previous_line_was_blank = True
+            continue
+
+        joined_lines.append(normalized_line)
+        previous_line_was_blank = False
+
+    while joined_lines and not joined_lines[-1]:
+        joined_lines.pop()
+
+    return "\n".join(joined_lines)
 
 
 def build_hashtags(category: str) -> list[str]:

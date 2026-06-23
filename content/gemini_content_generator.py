@@ -9,7 +9,7 @@ from google.genai import types
 
 from content.date_formatting import format_display_date
 from content.post_content import PostContent
-from content.post_content_builder import build_hashtags, format_hashtags
+from content.post_content_builder import build_caption, build_hashtags
 
 
 GEMINI_API_KEY_ENV_NAME = "GEMINI_API_KEY"
@@ -195,22 +195,15 @@ def build_final_caption(
     description_lines: list[str],
     hashtags: list[str],
 ) -> str:
-    caption_lines = [
-        f"📌 [{original_post_content.category}]",
-        original_post_content.title,
-        "",
-        "✅ 핵심 내용",
-        *[f"- {description_line}" for description_line in description_lines],
-        "",
-        build_period_line_from_post_content(original_post_content),
-        f"🏛️ 출처: {original_post_content.source_name}",
-        "🔗 자세히 보기",
-        original_post_content.source_url,
-        "",
-        format_hashtags(hashtags),
-    ]
-
-    return "\n".join(line for line in caption_lines if line.strip())
+    return build_caption(
+        category=original_post_content.category,
+        title=original_post_content.title,
+        summary_lines=description_lines,
+        period_line=build_period_line_from_post_content(original_post_content),
+        source_name=original_post_content.source_name,
+        source_url=original_post_content.source_url,
+        hashtags=hashtags,
+    )
 
 
 def build_period_line_from_post_content(post_content: PostContent) -> str:

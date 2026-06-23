@@ -5,6 +5,7 @@ import unittest
 from content.post_content_builder import (
     build_hashtags,
     build_post_content_from_candidate,
+    build_caption_summary_lines,
     format_hashtags,
 )
 from selection.content_candidate import ContentCandidate
@@ -25,11 +26,13 @@ class TestPostContentBuilder(unittest.TestCase):
         self.assertEqual(post_content.title, "2026년 대구 창업기업 모집")
         self.assertEqual(post_content.source_url, "https://example.com/startup")
         self.assertIn("📌 [대구 창업지원]", post_content.caption)
-        self.assertIn("✅ 핵심 내용", post_content.caption)
-        self.assertIn("- 테스트 요약", post_content.caption)
+        self.assertIn("✅ 한눈에 보기", post_content.caption)
+        self.assertIn("• 테스트 요약", post_content.caption)
+        self.assertIn("\n\n✅ 한눈에 보기\n", post_content.caption)
+        self.assertIn("\n\n⏰ 마감일: 2026.07.07", post_content.caption)
         self.assertIn("⏰ 마감일: 2026.07.07", post_content.caption)
         self.assertIn("🏛️ 출처: 테스트 출처", post_content.caption)
-        self.assertIn("🔗 자세히 보기\nhttps://example.com/startup", post_content.caption)
+        self.assertIn("🔗 원문 보기\nhttps://example.com/startup", post_content.caption)
         self.assertIn("#대구 #창업 #사업 #지원", post_content.caption)
         self.assertEqual(post_content.raw_candidate, candidate)
 
@@ -49,7 +52,31 @@ class TestPostContentBuilder(unittest.TestCase):
             post_content.caption,
         )
         self.assertIn("게시일: 2026.06.21", post_content.image_text_lines)
-        
+
+    def test_build_caption_summary_lines_formats_multiline_notice_summary(self) -> None:
+        summary_lines = build_caption_summary_lines(
+            "\n".join(
+                [
+                    "2026년 임산부 친환경농산물 지원사업 신청을 다음과 같이 알려드립니다.",
+                    "",
+                    "- 지원대상 : 2025년 1월 1일 이후 출산한 산모 또는 사업신청일 기준 임신부",
+                    "- 지원내용 : 임산부 1인당 연 24만원(자부담 4만8천원 포함) 친환경농산물 꾸러미 지원",
+                    "- 신청기간 : 2026. 7.1.(수) 10:00 ~ 7.14(화) 18:00",
+                    "- 신청방법 :",
+                ]
+            )
+        )
+
+        self.assertEqual(
+            summary_lines,
+            [
+                "2026년 임산부 친환경농산물 지원사업 신청을 다음과 같이 알려드립니다.",
+                "지원대상: 2025년 1월 1일 이후 출산한 산모 또는 사업신청일 기준 임신부",
+                "지원내용: 임산부 1인당 연 24만원(자부담 4만8천원 포함) 친환경농산물 꾸러미 지원",
+                "신청기간: 2026. 7.1.(수) 10:00 ~ 7.14(화) 18:00",
+            ],
+        )
+
     def test_build_hashtags_combines_default_and_category_hashtags(self) -> None:
         hashtags = build_hashtags("대구 기업지원")
 

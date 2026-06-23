@@ -62,9 +62,10 @@ class TestGeminiContentGenerator(unittest.TestCase):
         self.assertIn("AI가 다듬은 설명입니다.", enhanced_post_content.caption)
         self.assertIn("신청 대상자는 원문 공고를 확인하세요.", enhanced_post_content.caption)
         self.assertIn("📌 [대구 창업지원]", enhanced_post_content.caption)
-        self.assertIn("✅ 핵심 내용", enhanced_post_content.caption)
+        self.assertIn("✅ 한눈에 보기", enhanced_post_content.caption)
+        self.assertIn("• AI가 다듬은 설명입니다.", enhanced_post_content.caption)
         self.assertIn("🏛️ 출처: K-Startup", enhanced_post_content.caption)
-        self.assertIn("🔗 자세히 보기\nhttps://example.com/startup", enhanced_post_content.caption)
+        self.assertIn("🔗 원문 보기\nhttps://example.com/startup", enhanced_post_content.caption)
         self.assertEqual(enhanced_post_content.image_text_lines, ["AI 헤더", "AI 제목"])
         self.assertEqual(
             enhanced_post_content.hashtags,
