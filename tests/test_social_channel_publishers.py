@@ -213,6 +213,36 @@ class TestInstagramPublisher(unittest.TestCase):
             "Instagram media publish did not return post id.",
         )
 
+    @patch.dict(
+        os.environ,
+        {
+            "IG_USER_ID": "instagram-user-id",
+            "META_ACCESS_TOKEN": "meta-access-token",
+        },
+    )
+    @patch("publishing.instagram_publisher.time.sleep")
+    @patch("publishing.instagram_publisher.requests.post")
+    def test_publish_prepared_post_to_instagram_retries_when_media_is_not_ready(
+        self,
+        mock_post,
+        mock_sleep,
+    ) -> None:
+        mock_post.side_effect = [
+            FakeResponse(status_code=200, payload={"id": "creation-id"}),
+            FakeResponse(
+                status_code=400,
+                payload={"error": {"message": "Media ID is not available"}},
+            ),
+            FakeResponse(status_code=200, payload={"id": "instagram-post-id"}),
+        ]
+
+        publish_result = publish_prepared_post_to_instagram(make_prepared_post())
+
+        self.assertTrue(publish_result.is_success)
+        self.assertEqual(publish_result.remote_post_id, "instagram-post-id")
+        self.assertEqual(mock_post.call_count, 3)
+        mock_sleep.assert_called_once_with(10)
+
     @patch.dict(os.environ, {}, clear=True)
     def test_publish_prepared_post_to_instagram_requires_environment_values(
         self,

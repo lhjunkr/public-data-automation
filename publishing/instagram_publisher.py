@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 import requests
@@ -18,6 +19,11 @@ INSTAGRAM_GRAPH_API_BASE_URL = "https://graph.facebook.com/v25.0"
 IG_USER_ID_ENV_NAME = "IG_USER_ID"
 META_ACCESS_TOKEN_ENV_NAME = "META_ACCESS_TOKEN"
 INSTAGRAM_REQUEST_TIMEOUT_SECONDS = 30
+INSTAGRAM_PUBLISH_MAX_ATTEMPTS = 3
+INSTAGRAM_PUBLISH_RETRY_DELAY_SECONDS = 10
+INSTAGRAM_MEDIA_NOT_READY_ERROR_MESSAGES = (
+    "Media ID is not available",
+)
 
 
 def publish_prepared_post_to_instagram(prepared_post: PreparedPost) -> PublishResult:
@@ -46,7 +52,7 @@ def publish_prepared_post_to_instagram(prepared_post: PreparedPost) -> PublishRe
             raw_response=media_container_payload,
         )
 
-    publish_payload = publish_instagram_media_container(
+    publish_payload = publish_instagram_media_container_with_retry(
         instagram_user_id=instagram_user_id,
         meta_access_token=meta_access_token,
         creation_id=creation_id,
@@ -93,6 +99,30 @@ def create_instagram_media_container(
     )
 
     return parse_json_response(response)
+
+
+def publish_instagram_media_container_with_retry(
+    *,
+    instagram_user_id: str,
+    meta_access_token: str,
+    creation_id: str,
+) -> dict[str, Any]:
+    publish_payload: dict[str, Any] = {}
+
+    for attempt_number in range(1, INSTAGRAM_PUBLISH_MAX_ATTEMPTS + 1):
+        publish_payload = publish_instagram_media_container(
+            instagram_user_id=instagram_user_id,
+            meta_access_token=meta_access_token,
+            creation_id=creation_id,
+        )
+
+        if not is_instagram_media_not_ready_error(publish_payload):
+            return publish_payload
+
+        if attempt_number < INSTAGRAM_PUBLISH_MAX_ATTEMPTS:
+            time.sleep(INSTAGRAM_PUBLISH_RETRY_DELAY_SECONDS)
+
+    return publish_payload
 
 
 def publish_instagram_media_container(
@@ -163,6 +193,15 @@ def extract_instagram_error_message(response_payload: dict[str, Any]) -> str:
         return error_message
 
     return "Instagram API request failed."
+
+
+def is_instagram_media_not_ready_error(response_payload: dict[str, Any]) -> bool:
+    error_message = extract_instagram_error_message(response_payload)
+
+    return any(
+        retryable_message in error_message
+        for retryable_message in INSTAGRAM_MEDIA_NOT_READY_ERROR_MESSAGES
+    )
 
 
 def get_required_environment_value(environment_name: str) -> str:
