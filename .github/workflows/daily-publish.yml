@@ -39,6 +39,12 @@ jobs:
       THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
       THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
 
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,4 +72,47 @@ jobs:
         run: python -m scripts.check_required_secrets
 
       - name: Publish daily posts
-        run: python -m scripts.run_daily_publish
+        run: |
+          set +e
+          python -m scripts.run_daily_publish 2>&1 | tee daily_publish_output.txt
+          publish_exit_code="${PIPESTATUS[0]}"
+          echo "$publish_exit_code" > daily_publish_exit_code.txt
+          exit "$publish_exit_code"
+
+      - name: Build email report body
+        if: always()
+        run: |
+          {
+            echo "Workflow: Daily Public Data Automation"
+            echo "Status: ${{ job.status }}"
+            echo "Branch: ${{ github.ref_name }}"
+            echo "Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+            echo "Publish Exit Code:"
+            if [ -f daily_publish_exit_code.txt ]; then
+              cat daily_publish_exit_code.txt
+            else
+              echo "publish step was not completed"
+            fi
+            echo ""
+            echo "Publish Output:"
+            echo ""
+            if [ -f daily_publish_output.txt ]; then
+              cat daily_publish_output.txt
+            else
+              echo "daily_publish_output.txt was not generated."
+            fi
+          } > email_report.txt
+
+      - name: Send email report
+        if: always()
+        uses: dawidd6/action-send-mail@v6
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Public Data Automation ${{ job.status }} - Run #${{ github.run_number }}"
+          to: ${{ secrets.REPORT_EMAIL_TO }}
+          from: Public Data Automation <${{ secrets.SMTP_USERNAME }}>
+          body: file://email_report.txt
