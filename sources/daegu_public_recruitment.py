@@ -7,6 +7,7 @@ from sources.rss_fetcher import fetch_rss_feed_safely
 
 DAEGU_RECRUITMENT_CATEGORY = "대구 채용·시험"
 DAEGU_RECRUITMENT_SECTION = "공공"
+DAEGU_RECRUITMENT_SOURCE_PREFIX = "대구광역시 시험정보"
 
 
 @dataclass(frozen=True)
@@ -27,23 +28,23 @@ class DaeguPublicRecruitmentNotice:
 
 DAEGU_PUBLIC_RECRUITMENT_RSS_FEEDS = [
     DaeguRecruitmentRssFeed(
-        source_name="공채/경채 공무원",
+        source_name=f"{DAEGU_RECRUITMENT_SOURCE_PREFIX} - 공채/경채 공무원",
         feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02086",
     ),
     DaeguRecruitmentRssFeed(
-        source_name="임기제/별정직 공무원",
+        source_name=f"{DAEGU_RECRUITMENT_SOURCE_PREFIX} - 임기제/별정직 공무원",
         feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02087",
     ),
     DaeguRecruitmentRssFeed(
-        source_name="청원경찰",
+        source_name=f"{DAEGU_RECRUITMENT_SOURCE_PREFIX} - 청원경찰",
         feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02154",
     ),
     DaeguRecruitmentRssFeed(
-        source_name="개방형직위",
+        source_name=f"{DAEGU_RECRUITMENT_SOURCE_PREFIX} - 개방형직위",
         feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_02088",
     ),
     DaeguRecruitmentRssFeed(
-        source_name="중앙 및 타기관 채용소식",
+        source_name=f"{DAEGU_RECRUITMENT_SOURCE_PREFIX} - 중앙 및 타기관 채용소식",
         feed_url="https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00064",
     ),
 ]
