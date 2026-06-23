@@ -93,6 +93,7 @@ def build_gemini_prompt(post_content: PostContent) -> str:
 - image_text_lines 각 줄은 28자 이내로 작성합니다.
 - 카드뉴스 문구는 한 줄당 짧고 명확하게 씁니다.
 - image_text_lines에는 사업 목적이나 배경 설명을 넣지 않습니다.
+- image_text_lines에는 이모지나 특수 아이콘을 넣지 않습니다.
 - 알 수 없는 내용은 "원문 공고 확인"처럼 짧게 씁니다.
 
 입력 정보:

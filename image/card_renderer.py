@@ -37,6 +37,11 @@ BRAND_FONT_SIZE = 38
 TITLE_MAX_LINES = 5
 MAX_TEXT_WIDTH = CARD_WIDTH - (CARD_MARGIN_X * 2)
 BRAND_NAME = "Today Daegu"
+UNSUPPORTED_CARD_TEXT_REPLACEMENTS = {
+    "🗓️": "",
+    "🗓": "",
+    "⏰": "",
+}
 
 
 def render_post_content_card(
@@ -157,11 +162,24 @@ def draw_brand(
 
 
 def normalize_image_text_lines(image_text_lines: list[str]) -> list[str]:
-    return [
-        image_text_line.strip()
-        for image_text_line in image_text_lines
-        if image_text_line.strip()
-    ][:4]
+    normalized_lines: list[str] = []
+
+    for image_text_line in image_text_lines:
+        sanitized_line = sanitize_card_text(image_text_line)
+
+        if sanitized_line:
+            normalized_lines.append(sanitized_line)
+
+    return normalized_lines[:4]
+
+
+def sanitize_card_text(text: str) -> str:
+    sanitized_text = text.strip()
+
+    for unsupported_text, replacement_text in UNSUPPORTED_CARD_TEXT_REPLACEMENTS.items():
+        sanitized_text = sanitized_text.replace(unsupported_text, replacement_text)
+
+    return re.sub(r"\s+", " ", sanitized_text).strip()
 
 
 def select_title_text(

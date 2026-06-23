@@ -75,6 +75,18 @@ def build_period_line(candidate: ContentCandidate) -> str:
     return ""
 
 
+def build_image_period_line(candidate: ContentCandidate) -> str:
+    if candidate.deadline_at:
+        display_deadline = format_display_date(candidate.deadline_at)
+        return f"마감일: {display_deadline}"
+
+    if candidate.published_at:
+        display_published_at = format_display_date(candidate.published_at)
+        return f"게시일: {display_published_at}"
+
+    return ""
+
+
 def build_default_summary_lines(candidate: ContentCandidate) -> list[str]:
     if not candidate.summary:
         return []
@@ -99,7 +111,7 @@ def build_image_text_lines(candidate: ContentCandidate) -> list[str]:
         candidate.title,
     ]
 
-    period_line = build_period_line(candidate)
+    period_line = build_image_period_line(candidate)
 
     if period_line:
         image_text_lines.append(period_line)

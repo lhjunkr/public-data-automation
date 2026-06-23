@@ -48,7 +48,7 @@ class TestPostContentBuilder(unittest.TestCase):
             "🗓️ 게시일: 2026.06.21",
             post_content.caption,
         )
-        self.assertIn("🗓️ 게시일: 2026.06.21", post_content.image_text_lines)
+        self.assertIn("게시일: 2026.06.21", post_content.image_text_lines)
         
     def test_build_hashtags_combines_default_and_category_hashtags(self) -> None:
         hashtags = build_hashtags("대구 기업지원")

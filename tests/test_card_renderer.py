@@ -63,6 +63,12 @@ class TestCardRenderer(unittest.TestCase):
             ["대구", "공고"],
         )
 
+    def test_normalize_image_text_lines_removes_unsupported_date_icons(self) -> None:
+        self.assertEqual(
+            normalize_image_text_lines(["🗓️ 게시일: 2026.06.23", "⏰ 마감일: 2026.07.07"]),
+            ["게시일: 2026.06.23", "마감일: 2026.07.07"],
+        )
+
     def test_wrap_text_splits_oversized_word_by_width(self) -> None:
         font = load_korean_font(font_size=32)
         max_width = 120
