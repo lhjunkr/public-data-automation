@@ -11,7 +11,7 @@
 
 ## 운영 상태
 
-- GitHub Actions로 매일 `18:08 KST`에 자동 실행합니다.
+- GitHub Actions로 매일 `10:30 KST`, `20:30 KST`에 자동 실행합니다.
 - Facebook Page, Instagram, Threads, Naver Band 게시가 활성화되어 있습니다.
 - 실행 결과는 GitHub Actions 로그와 `outputs/` artifact의 `run_report.txt`,
   `failure_report.txt`에서 확인합니다.
@@ -52,7 +52,7 @@
 
 ```mermaid
 flowchart TD
-    A["GitHub Actions 18:08 KST"] --> B["공공데이터 수집"]
+    A["GitHub Actions 10:30 / 20:30 KST"] --> B["공공데이터 수집"]
     B --> C["출처별 fallback 및 ContentCandidate 표준 모델 변환"]
     C --> D["R2 게시 이력 동기화"]
     D --> E["오늘 게시 후보 선정"]
@@ -256,7 +256,7 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 
 실행 시점:
 
-- 매일 `18:08 KST`
+- 매일 `10:30 KST`, `20:30 KST`
 - 수동 실행 가능: GitHub Actions의 `workflow_dispatch`
 
 작업:
@@ -274,7 +274,8 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 
 주의:
 
-- GitHub cron은 UTC 기준이라 `8 9 * * *`가 18:08 KST입니다.
+- GitHub cron은 UTC 기준이라 `30 1 * * *`가 10:30 KST,
+  `30 11 * * *`가 20:30 KST입니다.
 - 워크플로우 환경변수 `TZ`는 `Asia/Seoul`로 지정되어 있습니다.
 - GitHub Actions 스케줄 실행은 GitHub 인프라 상황에 따라 몇 분 지연될 수 있습니다.
 - `concurrency` 설정으로 같은 일일 게시 워크플로우가 동시에 겹쳐 실행되지 않도록
