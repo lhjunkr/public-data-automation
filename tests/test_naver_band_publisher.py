@@ -108,6 +108,35 @@ class TestNaverBandPublisher(unittest.TestCase):
         },
     )
     @patch("publishing.naver_band_publisher.requests.post")
+    def test_publish_prepared_post_to_naver_band_requires_post_key(
+        self,
+        mock_post,
+    ) -> None:
+        mock_post.return_value = FakeResponse(
+            status_code=200,
+            payload={
+                "result_code": 1,
+                "result_data": {},
+            },
+        )
+
+        publish_result = publish_prepared_post_to_naver_band(make_prepared_post())
+
+        self.assertFalse(publish_result.is_success)
+        self.assertEqual(publish_result.channel_name, "naver_band")
+        self.assertEqual(
+            publish_result.error_message,
+            "Naver Band post creation did not return post key.",
+        )
+
+    @patch.dict(
+        os.environ,
+        {
+            "BAND_ACCESS_TOKEN": "band-access-token",
+            "BAND_KEY": "band-key",
+        },
+    )
+    @patch("publishing.naver_band_publisher.requests.post")
     def test_publish_prepared_post_to_naver_band_handles_non_json_response(
         self,
         mock_post,

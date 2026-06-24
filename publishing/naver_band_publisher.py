@@ -38,6 +38,12 @@ def publish_prepared_post_to_naver_band(prepared_post: PreparedPost) -> PublishR
         )
 
     remote_post_id = extract_naver_band_post_key(response_payload)
+    if not remote_post_id:
+        return build_failed_publish_result(
+            channel_name=NAVER_BAND_CHANNEL_NAME,
+            error_message="Naver Band post creation did not return post key.",
+            raw_response=response_payload,
+        )
 
     return build_success_publish_result(
         channel_name=NAVER_BAND_CHANNEL_NAME,
@@ -145,4 +151,3 @@ def get_required_environment_value(environment_name: str) -> str:
         return environment_value
 
     raise RuntimeError(f"{environment_name} environment variable is required.")
-
