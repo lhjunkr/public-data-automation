@@ -13,7 +13,7 @@
 
 - GitHub Actions로 매일 `18:08 KST`에 자동 실행합니다.
 - Facebook Page, Instagram, Threads, Naver Band 게시가 활성화되어 있습니다.
-- 게시 결과는 GitHub Actions 메일 리포트로 발송됩니다.
+- 실행 결과는 GitHub Actions 기본 알림과 Actions 로그에서 확인합니다.
 - 이미 게시한 원문 URL은 Cloudflare R2 게시 이력으로 중복 게시를 방지합니다.
 - 마감된 공고는 게시 후보에서 제외합니다.
 - Gemini API 장애가 발생해도 기본 게시 문구로 fallback합니다.
@@ -62,7 +62,7 @@ flowchart TD
     I --> J["Facebook / Instagram / Threads / Naver Band 게시"]
     J --> K["게시 결과 검증 및 이력 JSONL 기록"]
     K --> L["R2 게시 이력 업로드 및 20일 초과 이력 정리"]
-    L --> M["GitHub Actions 이메일 리포트"]
+    L --> M["GitHub Actions 실행 결과 기록"]
 ```
 
 ## 수집 안정성 정책
@@ -266,7 +266,7 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 - Facebook / Instagram / Threads / Naver Band 게시
 - 게시 이력 기록 및 R2 업로드
 - 20일 초과 R2 게시 이력 정리
-- 성공/실패와 관계없이 이메일 리포트 발송
+- 실행 결과를 GitHub Actions 로그에 기록
 
 주의:
 
@@ -308,16 +308,6 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 | `THREADS_ACCESS_TOKEN` | Threads 게시 토큰 |
 | `BAND_ACCESS_TOKEN` | Naver Band Access Token |
 | `BAND_KEY` | 게시 대상 Naver Band Key |
-
-### 이메일 리포트 Secret
-
-| Secret | 설명 |
-| --- | --- |
-| `SMTP_HOST` | SMTP 서버 주소. Naver Mail 사용 시 `smtp.naver.com` |
-| `SMTP_PORT` | SMTP 포트. Naver Mail SSL 사용 시 `465` |
-| `SMTP_USERNAME` | SMTP 로그인 ID |
-| `SMTP_PASSWORD` | SMTP 애플리케이션 비밀번호 |
-| `REPORT_EMAIL_TO` | 결과 리포트 수신 이메일 |
 
 ## 로컬 개발
 
