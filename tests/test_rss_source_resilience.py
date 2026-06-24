@@ -27,15 +27,19 @@ class TestRssSourceResilience(unittest.TestCase):
         ),
     )
     @patch("sources.rss_fetcher.print")
+    @patch("sources.rss_fetcher.time.sleep")
     @patch("sources.rss_fetcher.requests.get")
     def test_fetch_daegu_public_recruitment_notices_continues_after_feed_timeout(
         self,
         mock_requests_get,
+        mock_sleep,
         mock_print,
     ) -> None:
         mock_requests_get.side_effect = [
             requests.exceptions.ConnectTimeout("timeout 1"),
             requests.exceptions.ConnectTimeout("timeout 2"),
+            requests.exceptions.ConnectTimeout("timeout 3"),
+            requests.exceptions.ConnectTimeout("timeout 4"),
             FakeResponse(
                 content=build_rss_xml(
                     title="2026년도 대구광역시 공무원 시험 공고",
@@ -51,12 +55,15 @@ class TestRssSourceResilience(unittest.TestCase):
         self.assertEqual(notices[0].source_name, "성공 RSS")
         self.assertEqual(notices[0].source_url, "https://example.com/recruitment")
         mock_print.assert_called_once()
+        self.assertEqual(mock_sleep.call_count, 3)
 
     @patch("sources.rss_fetcher.print")
+    @patch("sources.rss_fetcher.time.sleep")
     @patch("sources.rss_fetcher.requests.get")
     def test_fetch_daegu_notices_returns_empty_list_when_notice_rss_fails(
         self,
         mock_requests_get,
+        mock_sleep,
         mock_print,
     ) -> None:
         mock_requests_get.side_effect = requests.exceptions.ConnectTimeout("timeout")
@@ -64,7 +71,8 @@ class TestRssSourceResilience(unittest.TestCase):
         notices = fetch_daegu_notices()
 
         self.assertEqual(notices, [])
-        self.assertEqual(mock_requests_get.call_count, 2)
+        self.assertEqual(mock_requests_get.call_count, 4)
+        self.assertEqual(mock_sleep.call_count, 3)
         mock_print.assert_called_once()
 
 
