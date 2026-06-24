@@ -4,11 +4,17 @@ name: Daily Public Data Automation
   workflow_dispatch:
   schedule:
     - cron: "30 8 * * *"
+    - cron: "55 8 * * *"
 
 jobs:
   run-public-data-automation:
     name: Run daily public data automation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: daily-public-data-automation
+      cancel-in-progress: false
 
     env:
       TZ: Asia/Seoul
