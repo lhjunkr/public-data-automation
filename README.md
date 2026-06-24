@@ -13,7 +13,8 @@
 
 - GitHub Actions로 매일 `18:08 KST`에 자동 실행합니다.
 - Facebook Page, Instagram, Threads, Naver Band 게시가 활성화되어 있습니다.
-- 실행 결과는 GitHub Actions 기본 알림과 Actions 로그에서 확인합니다.
+- 실행 결과는 GitHub Actions 로그와 `outputs/` artifact의 `run_report.txt`,
+  `failure_report.txt`에서 확인합니다.
 - 이미 게시한 원문 URL은 Cloudflare R2 게시 이력으로 중복 게시를 방지합니다.
 - 마감된 공고는 게시 후보에서 제외합니다.
 - Gemini API 장애가 발생해도 기본 게시 문구로 fallback합니다.
@@ -62,7 +63,8 @@ flowchart TD
     I --> J["Facebook / Instagram / Threads / Naver Band 게시"]
     J --> K["게시 결과 검증 및 이력 JSONL 기록"]
     K --> L["R2 게시 이력 업로드 및 20일 초과 이력 정리"]
-    L --> M["GitHub Actions 실행 결과 기록"]
+    L --> M["outputs 실행 리포트 저장"]
+    M --> N["GitHub Actions artifact 업로드"]
 ```
 
 ## 수집 안정성 정책
@@ -261,16 +263,18 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 
 - 테스트 실행
 - 필수 Secret 확인
-- 오늘 게시 후보 선정
+- `main.py` 단일 진입점으로 오늘 게시 후보 선정
 - 이미지 생성 및 R2 업로드
 - Facebook / Instagram / Threads / Naver Band 게시
 - 게시 이력 기록 및 R2 업로드
 - 20일 초과 R2 게시 이력 정리
-- 실행 결과를 GitHub Actions 로그에 기록
+- 실행 결과를 `outputs/YYYY-MM-DD/run_report.txt`에 저장
+- 실행 중 예외가 발생하면 `outputs/YYYY-MM-DD/failure_report.txt`에 저장
+- `outputs/` 디렉터리를 GitHub Actions artifact로 업로드
 
 주의:
 
-- GitHub cron은 UTC 기준이라 `08 9 * * *`가 18:08 KST입니다.
+- GitHub cron은 UTC 기준이라 `8 9 * * *`가 18:08 KST입니다.
 - 워크플로우 환경변수 `TZ`는 `Asia/Seoul`로 지정되어 있습니다.
 - GitHub Actions 스케줄 실행은 GitHub 인프라 상황에 따라 몇 분 지연될 수 있습니다.
 - `concurrency` 설정으로 같은 일일 게시 워크플로우가 동시에 겹쳐 실행되지 않도록
@@ -367,6 +371,12 @@ python3 -m scripts.check_daily_post_preparation
 python3 -m scripts.run_daily_publish
 ```
 
+GitHub Actions와 같은 구조로 실행 리포트까지 남기려면 아래 명령을 사용합니다.
+
+```bash
+python3 main.py
+```
+
 ## 주요 디렉터리 구조
 
 ```text
@@ -377,6 +387,7 @@ image/        Pillow 카드 이미지 생성
 storage/      Cloudflare R2 이미지/게시 이력 저장
 publishing/   Facebook, Instagram, Threads, Naver Band 게시 모듈
 pipeline/     수집 -> 선정 -> 콘텐츠 -> 이미지 -> 게시 전체 흐름
+reporting/    실행 리포트 및 실패 리포트 생성
 scripts/      수동 점검 및 운영 실행 스크립트
 tests/        단위 테스트
 .github/      CI 및 일일 게시 GitHub Actions

@@ -73,10 +73,12 @@ jobs:
       - name: Check required secrets
         run: python -m scripts.check_required_secrets
 
-      - name: Publish daily posts
-        run: |
-          set +e
-          python -m scripts.run_daily_publish 2>&1 | tee daily_publish_output.txt
-          publish_exit_code="${PIPESTATUS[0]}"
-          echo "$publish_exit_code" > daily_publish_exit_code.txt
-          exit "$publish_exit_code"
+      - name: Run automation
+        run: python main.py
+
+      - name: Upload generated outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-data-automation-outputs
+          path: outputs/
