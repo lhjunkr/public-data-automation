@@ -16,7 +16,7 @@ jobs:
       ENABLE_FACEBOOK_PUBLISH: "true"
       ENABLE_INSTAGRAM_PUBLISH: "true"
       ENABLE_THREADS_PUBLISH: "true"
-      ENABLE_NAVER_BAND_PUBLISH: "false"
+      ENABLE_NAVER_BAND_PUBLISH: "true"
 
       KSTARTUP_API_KEY: ${{ secrets.KSTARTUP_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -38,6 +38,9 @@ jobs:
 
       THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
       THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+
+      BAND_ACCESS_TOKEN: ${{ secrets.BAND_ACCESS_TOKEN }}
+      BAND_KEY: ${{ secrets.BAND_KEY }}
 
       SMTP_HOST: ${{ secrets.SMTP_HOST }}
       SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -116,3 +119,4 @@ jobs:
           to: ${{ secrets.REPORT_EMAIL_TO }}
           from: Public Data Automation <${{ secrets.SMTP_USERNAME }}>
           body: file://email_report.txt
+          
