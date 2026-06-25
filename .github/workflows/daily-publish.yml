@@ -3,7 +3,7 @@ name: Daily Public Data Automation
 on:
   workflow_dispatch:
   schedule:
-    - cron: "30 1 * * *" # KST 10:30
+    - cron: "39 5 * * *" # KST 14:39
 
 jobs:
   run-public-data-automation:
