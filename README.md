@@ -17,7 +17,7 @@
   `failure_report.txt`에서 확인합니다.
 - 이미 게시한 원문 URL은 Cloudflare R2 게시 이력으로 중복 게시를 방지합니다.
 - 마감된 공고는 게시 후보에서 제외합니다.
-- Gemini API 장애가 발생해도 기본 게시 문구로 fallback합니다.
+- Gemini API 장애가 발생해도 기본 게시 문구와 기본 해시태그로 fallback합니다.
 
 ## 지원 카테고리
 
@@ -57,7 +57,7 @@ flowchart TD
     C --> D["R2 게시 이력 동기화"]
     D --> E["오늘 게시 후보 선정"]
     E --> F["기본 SNS 본문 생성"]
-    F --> G["Gemini 본문 보강"]
+    F --> G["Gemini 설명문·추천 대상·수요 예측·태그 보강"]
     G --> H["Pillow 카드 이미지 생성"]
     H --> I["R2 Assets 이미지 업로드"]
     I --> J["Facebook / Instagram / Threads / Naver Band 게시"]
@@ -401,7 +401,7 @@ python3 main.py
 ```text
 sources/      RSS/API 원천 수집 및 원천별 정규화
 selection/    게시 후보 표준 모델과 일일 선정 정책
-content/      SNS 본문, 해시태그, Gemini 보강
+content/      SNS 본문, 추천 대상, 수요 예측, 해시태그, Gemini 보강
 image/        Pillow 카드 이미지 생성
 storage/      Cloudflare R2 이미지/게시 이력 저장
 publishing/   Facebook, Instagram, Threads, Naver Band 게시 모듈
