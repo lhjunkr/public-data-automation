@@ -11,7 +11,8 @@
 
 ## 운영 상태
 
-- GitHub Actions로 매일 `14:39 KST`에 자동 실행합니다.
+- 외부 스케줄러(Cloudflare Workers Cron)가 매일 지정한 시각에 GitHub Actions를
+  `workflow_dispatch`로 트리거해 자동 실행합니다.
 - Facebook Page, Instagram, Threads, Naver Band 게시가 활성화되어 있습니다.
 - 실행 결과는 GitHub Actions 로그와 `outputs/` artifact의 `run_report.txt`,
   `failure_report.txt`에서 확인합니다.
@@ -52,7 +53,7 @@
 
 ```mermaid
 flowchart TD
-    A["GitHub Actions 14:39 KST"] --> B["공공데이터 수집"]
+    A["Cloudflare Cron → GitHub Actions (workflow_dispatch)"] --> B["공공데이터 수집"]
     B --> C["출처별 fallback 및 ContentCandidate 표준 모델 변환"]
     C --> D["R2 게시 이력 동기화"]
     D --> E["오늘 게시 후보 선정"]
@@ -275,8 +276,9 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 
 실행 시점:
 
-- 매일 `14:39 KST`
-- 수동 실행 가능: GitHub Actions의 `workflow_dispatch`
+- 외부 스케줄러(Cloudflare Workers Cron)가 매일 지정한 시각에 GitHub REST API로
+  `workflow_dispatch`를 호출해 실행합니다.
+- 수동 실행도 가능합니다: GitHub Actions의 `Run workflow`(`workflow_dispatch`).
 
 작업:
 
@@ -293,11 +295,27 @@ Cloudflare R2를 두 용도로 분리해 사용합니다.
 
 주의:
 
-- GitHub cron은 UTC 기준이라 `39 5 * * *`가 14:39 KST입니다.
+- GitHub 자체 `schedule`(cron)은 발화가 지연·누락되는 문제가 있어 제거했고, 대신
+  외부 Cloudflare Workers Cron Trigger가 `workflow_dispatch`로 실행을 트리거합니다.
+- Cloudflare Cron Trigger의 cron식도 UTC 기준이므로 실행 시각은 KST에서 9시간을 뺀
+  값으로 설정합니다.
 - 워크플로우 환경변수 `TZ`는 `Asia/Seoul`로 지정되어 있습니다.
-- GitHub Actions 스케줄 실행은 GitHub 인프라 상황에 따라 몇 분 지연될 수 있습니다.
 - `concurrency` 설정으로 같은 일일 게시 워크플로우가 동시에 겹쳐 실행되지 않도록
   보호합니다.
+
+### 외부 스케줄러 (Cloudflare Workers Cron)
+
+GitHub 자체 예약 실행 대신 Cloudflare Workers의 Cron Trigger로 매일 정시에 이
+워크플로우를 실행합니다.
+
+- Worker는 Cron 시각이 되면 GitHub REST API의
+  `POST /repos/{owner}/{repo}/actions/workflows/daily-publish.yml/dispatches`를
+  호출해 `workflow_dispatch` 이벤트를 발생시킵니다.
+- 인증에는 해당 저장소의 `Actions: Read and write` 권한만 가진 fine-grained 토큰을
+  사용하며, 토큰은 Worker의 암호화 Secret(`GH_DISPATCH_TOKEN`)으로만 보관합니다.
+- 실행 시각은 Cloudflare Cron Trigger의 cron식(UTC 기준)에서 관리합니다.
+- 도입 이유: GitHub `schedule`은 인프라 상황에 따라 발화가 지연·누락되는 반면,
+  외부 Cron은 정시성이 높습니다.
 
 ## GitHub Secrets
 
