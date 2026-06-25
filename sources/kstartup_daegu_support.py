@@ -52,6 +52,24 @@ DAEGU_RELEVANCE_KEYWORDS = [
     "경북대학교",
 ]
 
+# 주제 관련성을 판별하는 의미 있는 필드만 검사한다.
+# URL·날짜·연락처·식별코드 등은 "대구"가 우연히 포함돼도 무관하므로 제외한다.
+DAEGU_RELEVANCE_FIELD_NAMES = [
+    "biz_pbanc_nm",
+    "supt_biz_titl_nm",
+    "titl_nm",
+    "aply_trgt_ctnt",
+    "aply_trgt",
+    "biz_supt_trgt_info",
+    "pbanc_ctnt",
+    "biz_supt_ctnt",
+    "supt_biz_intrd_info",
+    "ctnt",
+    "sprv_inst",
+    "biz_prch_dprt_nm",
+    "supt_regin",
+]
+
 
 @dataclass(frozen=True)
 class KStartupDaeguSupportItem:
@@ -231,7 +249,10 @@ def build_kstartup_item_key(raw_item: dict[str, Any]) -> str:
 
 
 def is_daegu_relevant_item(raw_item: dict[str, Any]) -> bool:
-    combined_text = " ".join(str(value) for value in raw_item.values())
+    combined_text = " ".join(
+        str(raw_item.get(field_name, ""))
+        for field_name in DAEGU_RELEVANCE_FIELD_NAMES
+    )
     return any(keyword in combined_text for keyword in DAEGU_RELEVANCE_KEYWORDS)
 
 

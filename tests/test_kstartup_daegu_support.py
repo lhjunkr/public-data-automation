@@ -123,6 +123,39 @@ class TestKStartupDaeguSupportFallback(unittest.TestCase):
         self.assertEqual(support_items[0].source_url, "https://example.com/valid")
 
 
+    @patch("sources.kstartup_daegu_support.get_kstartup_api_key")
+    @patch("sources.kstartup_daegu_support.fetch_kstartup_endpoint_page")
+    def test_fetch_kstartup_daegu_support_items_ignores_daegu_in_noise_fields_only(
+        self,
+        mock_fetch_kstartup_endpoint_page,
+        mock_get_kstartup_api_key,
+    ) -> None:
+        mock_get_kstartup_api_key.return_value = "api-key"
+        nationwide_item = {
+            "biz_pbanc_nm": "전국 청년 창업 지원사업",
+            "detl_pg_url": "https://example.com/daegu-branch",
+            "file_nm": "대구센터_방문안내.pdf",
+            "fstm_reg_dt": "20260622",
+            "pbanc_rcpt_bgng_dt": "20260622",
+            "pbanc_rcpt_end_dt": "20260701",
+        }
+        daegu_item = make_raw_kstartup_item(
+            title="대구 창업기업 모집",
+            source_url="https://example.com/daegu-startup",
+        )
+        mock_fetch_kstartup_endpoint_page.side_effect = [
+            [nationwide_item, daegu_item],
+            [],
+            [],
+            [],
+        ]
+
+        support_items = fetch_kstartup_daegu_support_items()
+
+        self.assertEqual(len(support_items), 1)
+        self.assertEqual(support_items[0].title, "대구 창업기업 모집")
+
+
 def make_raw_kstartup_item(title: str, source_url: str) -> dict[str, str]:
     return {
         "biz_pbanc_nm": title,
