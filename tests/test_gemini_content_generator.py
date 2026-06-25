@@ -10,7 +10,10 @@ from content.gemini_content_generator import (
     parse_gemini_json_response,
     remove_markdown_code_fence,
     validate_description_lines,
+    validate_demand_prediction_lines,
+    validate_generated_hashtags,
     validate_image_text_lines,
+    validate_recommended_target_lines,
 )
 from content.post_content import PostContent
 
@@ -54,8 +57,15 @@ class TestGeminiContentGenerator(unittest.TestCase):
                     "AI가 다듬은 설명입니다.",
                     "신청 대상자는 원문 공고를 확인하세요.",
                 ],
+                "recommended_targets": [
+                    "대구 창업지원 공고를 찾는 예비창업자",
+                    "원문 공고를 확인할 창업기업",
+                ],
+                "demand_prediction_lines": [
+                    "마감일이 있어 관련 창업기업의 확인 수요가 있을 수 있습니다."
+                ],
                 "image_text_lines": ["AI 헤더", "AI 제목"],
-                "hashtags": ["#대구", "공공정보"],
+                "hashtags": ["#대구", "창업지원", "사업공고", "예비창업"],
             },
         )
 
@@ -64,12 +74,19 @@ class TestGeminiContentGenerator(unittest.TestCase):
         self.assertIn("📌 [대구 창업지원]", enhanced_post_content.caption)
         self.assertIn("✅ 한눈에 보기", enhanced_post_content.caption)
         self.assertIn("• AI가 다듬은 설명입니다.", enhanced_post_content.caption)
+        self.assertIn("🎯 추천 대상", enhanced_post_content.caption)
+        self.assertIn("• 대구 창업지원 공고를 찾는 예비창업자", enhanced_post_content.caption)
+        self.assertIn("📈 수요 예측", enhanced_post_content.caption)
+        self.assertIn(
+            "• 마감일이 있어 관련 창업기업의 확인 수요가 있을 수 있습니다.",
+            enhanced_post_content.caption,
+        )
         self.assertIn("🏛️ 출처: K-Startup", enhanced_post_content.caption)
         self.assertIn("🔗 원문 보기\nhttps://example.com/startup", enhanced_post_content.caption)
         self.assertEqual(enhanced_post_content.image_text_lines, ["AI 헤더", "AI 제목"])
         self.assertEqual(
             enhanced_post_content.hashtags,
-            ["대구", "창업", "사업", "지원"],
+            ["대구", "창업지원", "사업공고", "예비창업"],
         )
         self.assertEqual(enhanced_post_content.source_url, original_post_content.source_url)
 
@@ -81,7 +98,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
             generated_payload={
                 "description_lines": ["설명1", "설명2", "설명3", "설명4"],
                 "image_text_lines": ["AI 헤더", "AI 제목"],
-                "hashtags": ["대구"],
+                "hashtags": ["대구", "창업지원", "사업공고", "예비창업"],
             },
         )
 
@@ -99,7 +116,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
                     "수도권과 비수도권의 창업 격차를 줄이는 공고입니다."
                 ],
                 "image_text_lines": ["AI 헤더", "AI 제목"],
-                "hashtags": ["대구"],
+                "hashtags": ["대구", "창업지원", "사업공고", "예비창업"],
             },
         )
 
@@ -140,7 +157,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
                     "대구 창업지원",
                     "이 문장은 이미지 카드에 넣기에는 너무 길어서 제외되어야 합니다",
                 ],
-                "hashtags": ["대구"],
+                "hashtags": ["대구", "창업지원", "사업공고", "예비창업"],
             },
         )
 
@@ -211,6 +228,34 @@ class TestGeminiContentGenerator(unittest.TestCase):
             [],
         )
 
+    def test_validate_recommended_target_lines_accepts_valid_lines(self) -> None:
+        self.assertEqual(
+            validate_recommended_target_lines(["창업지원 공고를 찾는 예비창업자"]),
+            ["창업지원 공고를 찾는 예비창업자"],
+        )
+
+    def test_validate_recommended_target_lines_rejects_too_many_lines(self) -> None:
+        self.assertEqual(
+            validate_recommended_target_lines(["1", "2", "3", "4"]),
+            [],
+        )
+
+    def test_validate_demand_prediction_lines_accepts_valid_lines(self) -> None:
+        self.assertEqual(
+            validate_demand_prediction_lines(
+                ["마감일이 있어 관련 기업의 확인 수요가 있을 수 있습니다."]
+            ),
+            ["마감일이 있어 관련 기업의 확인 수요가 있을 수 있습니다."],
+        )
+
+    def test_validate_demand_prediction_lines_rejects_risky_expansion_keyword(
+        self,
+    ) -> None:
+        self.assertEqual(
+            validate_demand_prediction_lines(["지역 창업 생태계 강화 수요가 큽니다."]),
+            [],
+        )
+
     def test_validate_image_text_lines_accepts_valid_lines(self) -> None:
         self.assertEqual(
             validate_image_text_lines(["대구 창업지원", "창업기업 모집", "마감일 2026.07.07"]),
@@ -228,6 +273,36 @@ class TestGeminiContentGenerator(unittest.TestCase):
             validate_image_text_lines(
                 ["대구 창업지원", "이 문장은 이미지 카드에 넣기에는 너무 길어서 제외되어야 합니다"]
             ),
+            [],
+        )
+
+    def test_validate_generated_hashtags_accepts_exactly_four_safe_tags(self) -> None:
+        self.assertEqual(
+            validate_generated_hashtags(["대구", "창업지원", "사업공고", "예비창업"]),
+            ["대구", "창업지원", "사업공고", "예비창업"],
+        )
+
+    def test_validate_generated_hashtags_rejects_wrong_count(self) -> None:
+        self.assertEqual(
+            validate_generated_hashtags(["대구", "창업지원", "사업공고"]),
+            [],
+        )
+
+    def test_validate_generated_hashtags_rejects_space(self) -> None:
+        self.assertEqual(
+            validate_generated_hashtags(["대구", "창업 지원", "사업공고", "예비창업"]),
+            [],
+        )
+
+    def test_validate_generated_hashtags_rejects_special_character(self) -> None:
+        self.assertEqual(
+            validate_generated_hashtags(["대구", "창업지원", "사업공고", "K-Startup"]),
+            [],
+        )
+
+    def test_validate_generated_hashtags_rejects_too_long_tag(self) -> None:
+        self.assertEqual(
+            validate_generated_hashtags(["대구", "창업지원", "사업공고", "지나치게긴해시태그테스트입니다"]),
             [],
         )
 

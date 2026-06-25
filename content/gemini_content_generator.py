@@ -17,8 +17,14 @@ DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 MAX_DESCRIPTION_LINES = 3
 MAX_DESCRIPTION_LINE_LENGTH = 90
+MAX_RECOMMENDED_TARGET_LINES = 3
+MAX_RECOMMENDED_TARGET_LINE_LENGTH = 80
+MAX_DEMAND_PREDICTION_LINES = 2
+MAX_DEMAND_PREDICTION_LINE_LENGTH = 90
 MAX_IMAGE_TEXT_LINES = 4
 MAX_IMAGE_TEXT_LINE_LENGTH = 28
+GENERATED_HASHTAG_COUNT = 4
+MAX_GENERATED_HASHTAG_LENGTH = 12
 DESCRIPTION_RISKY_EXPANSION_KEYWORDS = [
     "수도권",
     "비수도권",
@@ -86,6 +92,11 @@ def build_gemini_prompt(post_content: PostContent) -> str:
 - description_lines는 2~3문장만 작성합니다.
 - description_lines는 제목과 입력 요약을 쉬운 말로 풀어쓰는 용도로만 사용합니다.
 - description_lines에 입력 정보보다 구체적인 사업 목적, 대상 지역, 지원 내용, 혜택을 추가하지 않습니다.
+- recommended_targets에는 이 정보를 확인하면 좋을 대상을 1~3개 작성합니다.
+- recommended_targets는 원문에서 확인되는 대상만 쓰고, 확실하지 않으면 "관심 있는 시민은 원문 공고를 확인하세요."라고 씁니다.
+- demand_prediction_lines에는 수요 예측을 1~2문장 작성합니다.
+- demand_prediction_lines는 정량 예측, 경쟁률, 신청 규모를 만들어내지 않습니다.
+- demand_prediction_lines는 카테고리, 마감일, 정보 성격을 바탕으로 보수적으로 작성합니다.
 - 대상자가 명확하지 않으면 "관심 있는 시민은 원문 공고를 확인하세요."라고 씁니다.
 - 제목에 없는 지역명은 쓰지 않습니다.
 - 입력 요약에 없는 정책 목적이나 지원 내용을 쓰지 않습니다.
@@ -95,6 +106,11 @@ def build_gemini_prompt(post_content: PostContent) -> str:
 - image_text_lines에는 사업 목적이나 배경 설명을 넣지 않습니다.
 - image_text_lines에는 이모지나 특수 아이콘을 넣지 않습니다.
 - 알 수 없는 내용은 "원문 공고 확인"처럼 짧게 씁니다.
+- hashtags는 게시물 텍스트에 맞는 4개를 정확히 작성합니다.
+- hashtags에는 # 기호를 붙이지 않습니다.
+- hashtags에는 공백, 특수문자, 중복을 넣지 않습니다.
+- hashtags는 너무 넓은 태그만 반복하지 말고 제목과 카테고리에 맞게 작성합니다.
+- 대구 관련 정보이므로 가능하면 "대구"를 포함합니다.
 
 입력 정보:
 카테고리: {post_content.category}
@@ -113,13 +129,19 @@ def build_gemini_prompt(post_content: PostContent) -> str:
     "이 정보가 무엇인지 설명하는 문장",
     "누가 보면 좋은 정보인지 설명하는 문장"
   ],
+  "recommended_targets": [
+    "추천 대상"
+  ],
+  "demand_prediction_lines": [
+    "수요 예측 문장"
+  ],
   "image_text_lines": [
     "카테고리",
     "짧은 제목",
     "마감일 또는 게시일",
     "원문 공고 확인"
   ],
-  "hashtags": ["대구", "공공정보"]
+  "hashtags": ["대구", "창업", "지원사업", "공고"]
 }}
 """.strip()
 
@@ -160,17 +182,38 @@ def build_enhanced_post_content(
     validated_description_lines = validate_description_lines(
         generated_description_lines
     )
+    generated_recommended_target_lines = clean_generated_text_list(
+        generated_payload.get("recommended_targets")
+    )
+    validated_recommended_target_lines = validate_recommended_target_lines(
+        generated_recommended_target_lines
+    )
+    generated_demand_prediction_lines = clean_generated_text_list(
+        generated_payload.get("demand_prediction_lines")
+    )
+    validated_demand_prediction_lines = validate_demand_prediction_lines(
+        generated_demand_prediction_lines
+    )
     generated_image_text_lines = clean_generated_text_list(
         generated_payload.get("image_text_lines")
     )
     validated_image_text_lines = validate_image_text_lines(generated_image_text_lines)
-    final_hashtags = build_hashtags(original_post_content.category)
+    generated_hashtags = clean_generated_hashtags(generated_payload.get("hashtags"))
+    final_hashtags = validate_generated_hashtags(generated_hashtags) or build_hashtags(
+        original_post_content.category
+    )
     final_caption = original_post_content.caption
 
-    if validated_description_lines:
+    if has_any_caption_enhancement(
+        description_lines=validated_description_lines,
+        recommended_target_lines=validated_recommended_target_lines,
+        demand_prediction_lines=validated_demand_prediction_lines,
+    ):
         final_caption = build_final_caption(
             original_post_content=original_post_content,
             description_lines=validated_description_lines,
+            recommended_target_lines=validated_recommended_target_lines,
+            demand_prediction_lines=validated_demand_prediction_lines,
             hashtags=final_hashtags,
         )
 
@@ -193,16 +236,33 @@ def build_enhanced_post_content(
 def build_final_caption(
     original_post_content: PostContent,
     description_lines: list[str],
+    recommended_target_lines: list[str],
+    demand_prediction_lines: list[str],
     hashtags: list[str],
 ) -> str:
     return build_caption(
         category=original_post_content.category,
         title=original_post_content.title,
         summary_lines=description_lines,
+        recommended_target_lines=recommended_target_lines,
+        demand_prediction_lines=demand_prediction_lines,
         period_line=build_period_line_from_post_content(original_post_content),
         source_name=original_post_content.source_name,
         source_url=original_post_content.source_url,
         hashtags=hashtags,
+    )
+
+
+def has_any_caption_enhancement(
+    *,
+    description_lines: list[str],
+    recommended_target_lines: list[str],
+    demand_prediction_lines: list[str],
+) -> bool:
+    return bool(
+        description_lines
+        or recommended_target_lines
+        or demand_prediction_lines
     )
 
 
@@ -217,20 +277,53 @@ def build_period_line_from_post_content(post_content: PostContent) -> str:
 
 
 def validate_description_lines(description_lines: list[str]) -> list[str]:
-    if not description_lines:
+    return validate_bounded_text_lines(
+        text_lines=description_lines,
+        max_line_count=MAX_DESCRIPTION_LINES,
+        max_line_length=MAX_DESCRIPTION_LINE_LENGTH,
+        reject_risky_expansion=True,
+    )
+
+
+def validate_recommended_target_lines(recommended_target_lines: list[str]) -> list[str]:
+    return validate_bounded_text_lines(
+        text_lines=recommended_target_lines,
+        max_line_count=MAX_RECOMMENDED_TARGET_LINES,
+        max_line_length=MAX_RECOMMENDED_TARGET_LINE_LENGTH,
+        reject_risky_expansion=True,
+    )
+
+
+def validate_demand_prediction_lines(demand_prediction_lines: list[str]) -> list[str]:
+    return validate_bounded_text_lines(
+        text_lines=demand_prediction_lines,
+        max_line_count=MAX_DEMAND_PREDICTION_LINES,
+        max_line_length=MAX_DEMAND_PREDICTION_LINE_LENGTH,
+        reject_risky_expansion=True,
+    )
+
+
+def validate_bounded_text_lines(
+    *,
+    text_lines: list[str],
+    max_line_count: int,
+    max_line_length: int,
+    reject_risky_expansion: bool,
+) -> list[str]:
+    if not text_lines:
         return []
 
-    if len(description_lines) > MAX_DESCRIPTION_LINES:
+    if len(text_lines) > max_line_count:
         return []
 
-    for description_line in description_lines:
-        if len(description_line) > MAX_DESCRIPTION_LINE_LENGTH:
+    for text_line in text_lines:
+        if len(text_line) > max_line_length:
             return []
 
-        if has_risky_expansion_keyword(description_line):
+        if reject_risky_expansion and has_risky_expansion_keyword(text_line):
             return []
 
-    return description_lines
+    return text_lines
 
 
 def has_risky_expansion_keyword(text: str) -> bool:
@@ -252,6 +345,28 @@ def validate_image_text_lines(image_text_lines: list[str]) -> list[str]:
             return []
 
     return image_text_lines
+
+
+def validate_generated_hashtags(hashtags: list[str]) -> list[str]:
+    if len(hashtags) != GENERATED_HASHTAG_COUNT:
+        return []
+
+    for hashtag in hashtags:
+        if len(hashtag) > MAX_GENERATED_HASHTAG_LENGTH:
+            return []
+
+        if has_invalid_hashtag_character(hashtag):
+            return []
+
+    return hashtags
+
+
+def has_invalid_hashtag_character(hashtag: str) -> bool:
+    return (
+        any(character.isspace() for character in hashtag)
+        or "#" in hashtag
+        or not hashtag.isalnum()
+    )
 
 
 def clean_generated_text(value: Any) -> str:

@@ -16,6 +16,8 @@ CATEGORY_HASHTAGS = {
 DEFAULT_HASHTAGS = ["대구", "공공정보", "대구정보", "공공데이터"]
 HASHTAG_COUNT = 4
 CAPTION_SUMMARY_HEADING = "✅ 한눈에 보기"
+CAPTION_RECOMMENDED_TARGET_HEADING = "🎯 추천 대상"
+CAPTION_DEMAND_PREDICTION_HEADING = "📈 수요 예측"
 CAPTION_BULLET_PREFIX = "• "
 MAX_CAPTION_SUMMARY_LINES = 4
 
@@ -67,6 +69,8 @@ def build_caption(
     category: str,
     title: str,
     summary_lines: list[str],
+    recommended_target_lines: list[str] | None = None,
+    demand_prediction_lines: list[str] | None = None,
     period_line: str,
     source_name: str,
     source_url: str,
@@ -77,6 +81,10 @@ def build_caption(
         title,
         "",
         *build_caption_summary_section(summary_lines),
+        "",
+        *build_caption_recommended_target_section(recommended_target_lines or []),
+        "",
+        *build_caption_demand_prediction_section(demand_prediction_lines or []),
         "",
         period_line,
         f"🏛️ 출처: {source_name}",
@@ -114,12 +122,37 @@ def build_image_period_line(candidate: ContentCandidate) -> str:
 
 
 def build_caption_summary_section(summary_lines: list[str]) -> list[str]:
-    if not summary_lines:
+    return build_caption_bullet_section(CAPTION_SUMMARY_HEADING, summary_lines)
+
+
+def build_caption_recommended_target_section(
+    recommended_target_lines: list[str],
+) -> list[str]:
+    return build_caption_bullet_section(
+        CAPTION_RECOMMENDED_TARGET_HEADING,
+        recommended_target_lines,
+    )
+
+
+def build_caption_demand_prediction_section(
+    demand_prediction_lines: list[str],
+) -> list[str]:
+    return build_caption_bullet_section(
+        CAPTION_DEMAND_PREDICTION_HEADING,
+        demand_prediction_lines,
+    )
+
+
+def build_caption_bullet_section(
+    heading: str,
+    bullet_lines: list[str],
+) -> list[str]:
+    if not bullet_lines:
         return []
 
     return [
-        CAPTION_SUMMARY_HEADING,
-        *[f"{CAPTION_BULLET_PREFIX}{summary_line}" for summary_line in summary_lines],
+        heading,
+        *[f"{CAPTION_BULLET_PREFIX}{bullet_line}" for bullet_line in bullet_lines],
     ]
 
 

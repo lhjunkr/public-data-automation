@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from content.post_content_builder import (
+    build_caption,
     build_hashtags,
     build_post_content_from_candidate,
     build_caption_summary_lines,
@@ -76,6 +77,28 @@ class TestPostContentBuilder(unittest.TestCase):
                 "신청기간: 2026. 7.1.(수) 10:00 ~ 7.14(화) 18:00",
             ],
         )
+
+    def test_build_caption_includes_ai_recommended_targets_and_demand_prediction(
+        self,
+    ) -> None:
+        caption = build_caption(
+            category="대구 창업지원",
+            title="2026년 대구 창업기업 모집",
+            summary_lines=["창업기업 모집 공고입니다."],
+            recommended_target_lines=["대구 창업지원 공고를 찾는 예비창업자"],
+            demand_prediction_lines=["마감일이 있어 확인 수요가 있을 수 있습니다."],
+            period_line="⏰ 마감일: 2026.07.07",
+            source_name="K-Startup",
+            source_url="https://example.com/startup",
+            hashtags=["대구", "창업지원", "사업공고", "예비창업"],
+        )
+
+        self.assertIn("✅ 한눈에 보기", caption)
+        self.assertIn("🎯 추천 대상", caption)
+        self.assertIn("• 대구 창업지원 공고를 찾는 예비창업자", caption)
+        self.assertIn("📈 수요 예측", caption)
+        self.assertIn("• 마감일이 있어 확인 수요가 있을 수 있습니다.", caption)
+        self.assertIn("#대구 #창업지원 #사업공고 #예비창업", caption)
 
     def test_build_hashtags_combines_default_and_category_hashtags(self) -> None:
         hashtags = build_hashtags("대구 기업지원")
