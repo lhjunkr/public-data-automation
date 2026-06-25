@@ -29,12 +29,45 @@ def print_daily_publish_results(
             if publish_result.error_message:
                 print(f"     오류: {publish_result.error_message}")
 
+        if is_partially_failed_post(daily_publish_result):
+            print("   ※ 일부 채널만 실패했습니다(부분 게시).")
+        elif is_completely_failed_post(daily_publish_result):
+            print("   ※ 모든 채널 게시에 실패했습니다.")
 
-def has_failed_publish_channel(
+
+def has_completely_failed_post(
     daily_publish_results: list[DailySocialPublishResult],
 ) -> bool:
     return any(
-        not publish_result.is_success
+        is_completely_failed_post(daily_publish_result)
         for daily_publish_result in daily_publish_results
-        for publish_result in daily_publish_result.publish_results
     )
+
+
+def is_completely_failed_post(
+    daily_publish_result: DailySocialPublishResult,
+) -> bool:
+    publish_results = daily_publish_result.publish_results
+
+    if not publish_results:
+        return False
+
+    return all(
+        not publish_result.is_success
+        for publish_result in publish_results
+    )
+
+
+def is_partially_failed_post(
+    daily_publish_result: DailySocialPublishResult,
+) -> bool:
+    publish_results = daily_publish_result.publish_results
+
+    has_success = any(
+        publish_result.is_success for publish_result in publish_results
+    )
+    has_failure = any(
+        not publish_result.is_success for publish_result in publish_results
+    )
+
+    return has_success and has_failure

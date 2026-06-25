@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 from pipeline.daily_social_publish import publish_daily_posts_to_social_channels
 from reporting.console_report import (
-    has_failed_publish_channel,
+    has_completely_failed_post,
     print_daily_publish_results,
 )
 from reporting.run_report import (
@@ -37,7 +37,7 @@ def main() -> int:
             finished_at=finished_at,
         )
 
-        if has_failed_publish_channel(daily_publish_results):
+        if has_completely_failed_post(daily_publish_results):
             return 1
 
         return 0
