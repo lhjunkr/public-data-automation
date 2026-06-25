@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any
 
 from google import genai
@@ -9,7 +10,11 @@ from google.genai import types
 
 from content.date_formatting import format_display_date
 from content.post_content import PostContent
-from content.post_content_builder import build_caption, build_hashtags
+from content.post_content_builder import (
+    build_caption,
+    build_caption_summary_lines,
+    build_hashtags,
+)
 
 
 GEMINI_API_KEY_ENV_NAME = "GEMINI_API_KEY"
@@ -176,46 +181,40 @@ def build_enhanced_post_content(
     original_post_content: PostContent,
     generated_payload: dict[str, Any],
 ) -> PostContent:
-    generated_description_lines = clean_generated_text_list(
-        generated_payload.get("description_lines")
+    description_lines = validate_description_lines(
+        clean_generated_text_list(generated_payload.get("description_lines"))
     )
-    validated_description_lines = validate_description_lines(
-        generated_description_lines
+    recommended_target_lines = validate_recommended_target_lines(
+        clean_generated_text_list(generated_payload.get("recommended_targets"))
     )
-    generated_recommended_target_lines = clean_generated_text_list(
-        generated_payload.get("recommended_targets")
+    demand_prediction_lines = validate_demand_prediction_lines(
+        clean_generated_text_list(generated_payload.get("demand_prediction_lines"))
     )
-    validated_recommended_target_lines = validate_recommended_target_lines(
-        generated_recommended_target_lines
+    image_text_lines = validate_image_text_lines(
+        clean_generated_text_list(generated_payload.get("image_text_lines"))
     )
-    generated_demand_prediction_lines = clean_generated_text_list(
-        generated_payload.get("demand_prediction_lines")
+    hashtags = build_final_hashtags(
+        clean_generated_text_list(generated_payload.get("hashtags")),
+        original_post_content.category,
     )
-    validated_demand_prediction_lines = validate_demand_prediction_lines(
-        generated_demand_prediction_lines
-    )
-    generated_image_text_lines = clean_generated_text_list(
-        generated_payload.get("image_text_lines")
-    )
-    validated_image_text_lines = validate_image_text_lines(generated_image_text_lines)
-    generated_hashtags = clean_generated_hashtags(generated_payload.get("hashtags"))
-    final_hashtags = validate_generated_hashtags(generated_hashtags) or build_hashtags(
-        original_post_content.category
-    )
-    final_caption = original_post_content.caption
 
-    if has_any_caption_enhancement(
-        description_lines=validated_description_lines,
-        recommended_target_lines=validated_recommended_target_lines,
-        demand_prediction_lines=validated_demand_prediction_lines,
-    ):
-        final_caption = build_final_caption(
-            original_post_content=original_post_content,
-            description_lines=validated_description_lines,
-            recommended_target_lines=validated_recommended_target_lines,
-            demand_prediction_lines=validated_demand_prediction_lines,
-            hashtags=final_hashtags,
-        )
+    # 설명문이 모두 검증에서 제외되어도 본문에 요약은 항상 남기고, 추천 대상과
+    # AI 해시태그는 Gemini가 만들어 준 만큼 그대로 반영한다.
+    summary_lines = description_lines or build_caption_summary_lines(
+        original_post_content.summary
+    )
+
+    enhanced_caption = build_caption(
+        category=original_post_content.category,
+        title=original_post_content.title,
+        summary_lines=summary_lines,
+        recommended_target_lines=recommended_target_lines,
+        demand_prediction_lines=demand_prediction_lines,
+        period_line=build_period_line_from_post_content(original_post_content),
+        source_name=original_post_content.source_name,
+        source_url=original_post_content.source_url,
+        hashtags=hashtags,
+    )
 
     return PostContent(
         category=original_post_content.category,
@@ -225,44 +224,11 @@ def build_enhanced_post_content(
         published_at=original_post_content.published_at,
         deadline_at=original_post_content.deadline_at,
         summary=original_post_content.summary,
-        caption=final_caption,
-        hashtags=final_hashtags,
-        image_text_lines=validated_image_text_lines
+        caption=enhanced_caption,
+        hashtags=hashtags,
+        image_text_lines=image_text_lines
         or original_post_content.image_text_lines,
         raw_candidate=original_post_content.raw_candidate,
-    )
-
-
-def build_final_caption(
-    original_post_content: PostContent,
-    description_lines: list[str],
-    recommended_target_lines: list[str],
-    demand_prediction_lines: list[str],
-    hashtags: list[str],
-) -> str:
-    return build_caption(
-        category=original_post_content.category,
-        title=original_post_content.title,
-        summary_lines=description_lines,
-        recommended_target_lines=recommended_target_lines,
-        demand_prediction_lines=demand_prediction_lines,
-        period_line=build_period_line_from_post_content(original_post_content),
-        source_name=original_post_content.source_name,
-        source_url=original_post_content.source_url,
-        hashtags=hashtags,
-    )
-
-
-def has_any_caption_enhancement(
-    *,
-    description_lines: list[str],
-    recommended_target_lines: list[str],
-    demand_prediction_lines: list[str],
-) -> bool:
-    return bool(
-        description_lines
-        or recommended_target_lines
-        or demand_prediction_lines
     )
 
 
@@ -310,20 +276,21 @@ def validate_bounded_text_lines(
     max_line_length: int,
     reject_risky_expansion: bool,
 ) -> list[str]:
-    if not text_lines:
-        return []
-
-    if len(text_lines) > max_line_count:
-        return []
+    valid_text_lines: list[str] = []
 
     for text_line in text_lines:
         if len(text_line) > max_line_length:
-            return []
+            continue
 
         if reject_risky_expansion and has_risky_expansion_keyword(text_line):
-            return []
+            continue
 
-    return text_lines
+        valid_text_lines.append(text_line)
+
+        if len(valid_text_lines) >= max_line_count:
+            break
+
+    return valid_text_lines
 
 
 def has_risky_expansion_keyword(text: str) -> bool:
@@ -347,33 +314,41 @@ def validate_image_text_lines(image_text_lines: list[str]) -> list[str]:
     return image_text_lines
 
 
-def validate_generated_hashtags(hashtags: list[str]) -> list[str]:
-    if len(hashtags) != GENERATED_HASHTAG_COUNT:
-        return []
+def build_final_hashtags(
+    generated_hashtags: list[str],
+    category: str,
+) -> list[str]:
+    final_hashtags: list[str] = []
 
-    for hashtag in hashtags:
-        if len(hashtag) > MAX_GENERATED_HASHTAG_LENGTH:
-            return []
+    for generated_hashtag in generated_hashtags:
+        sanitized_hashtag = sanitize_generated_hashtag(generated_hashtag)
 
-        if has_invalid_hashtag_character(hashtag):
-            return []
+        if sanitized_hashtag and sanitized_hashtag not in final_hashtags:
+            final_hashtags.append(sanitized_hashtag)
 
-    return hashtags
+        if len(final_hashtags) >= GENERATED_HASHTAG_COUNT:
+            break
+
+    for fallback_hashtag in build_hashtags(category):
+        if len(final_hashtags) >= GENERATED_HASHTAG_COUNT:
+            break
+
+        if fallback_hashtag not in final_hashtags:
+            final_hashtags.append(fallback_hashtag)
+
+    return final_hashtags[:GENERATED_HASHTAG_COUNT]
 
 
-def has_invalid_hashtag_character(hashtag: str) -> bool:
-    return (
-        any(character.isspace() for character in hashtag)
-        or "#" in hashtag
-        or not hashtag.isalnum()
+def sanitize_generated_hashtag(hashtag: str) -> str:
+    cleaned_hashtag = re.sub(r"\s+", "", hashtag.strip().lstrip("#"))
+    cleaned_hashtag = "".join(
+        character for character in cleaned_hashtag if character.isalnum()
     )
 
-
-def clean_generated_text(value: Any) -> str:
-    if not isinstance(value, str):
+    if not cleaned_hashtag or len(cleaned_hashtag) > MAX_GENERATED_HASHTAG_LENGTH:
         return ""
 
-    return value.strip()
+    return cleaned_hashtag
 
 
 def clean_generated_text_list(value: Any) -> list[str]:
@@ -392,16 +367,3 @@ def clean_generated_text_list(value: Any) -> list[str]:
             cleaned_values.append(cleaned_item)
 
     return cleaned_values
-
-
-def clean_generated_hashtags(value: Any) -> list[str]:
-    cleaned_hashtags = clean_generated_text_list(value)
-    normalized_hashtags: list[str] = []
-
-    for hashtag in cleaned_hashtags:
-        normalized_hashtag = hashtag.strip().lstrip("#")
-
-        if normalized_hashtag and normalized_hashtag not in normalized_hashtags:
-            normalized_hashtags.append(normalized_hashtag)
-
-    return normalized_hashtags

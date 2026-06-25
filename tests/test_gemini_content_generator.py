@@ -5,13 +5,13 @@ from unittest.mock import patch
 
 from content.gemini_content_generator import (
     build_enhanced_post_content,
-    clean_generated_hashtags,
+    build_final_hashtags,
     enhance_post_content_with_gemini,
     parse_gemini_json_response,
     remove_markdown_code_fence,
+    sanitize_generated_hashtag,
     validate_description_lines,
     validate_demand_prediction_lines,
-    validate_generated_hashtags,
     validate_image_text_lines,
     validate_recommended_target_lines,
 )
@@ -90,7 +90,7 @@ class TestGeminiContentGenerator(unittest.TestCase):
         )
         self.assertEqual(enhanced_post_content.source_url, original_post_content.source_url)
 
-    def test_build_enhanced_post_content_limits_description_lines(self) -> None:
+    def test_build_enhanced_post_content_caps_description_to_max_lines(self) -> None:
         original_post_content = make_post_content()
 
         enhanced_post_content = build_enhanced_post_content(
@@ -102,9 +102,11 @@ class TestGeminiContentGenerator(unittest.TestCase):
             },
         )
 
-        self.assertEqual(enhanced_post_content.caption, original_post_content.caption)
+        self.assertIn("• 설명1", enhanced_post_content.caption)
+        self.assertIn("• 설명3", enhanced_post_content.caption)
+        self.assertNotIn("설명4", enhanced_post_content.caption)
 
-    def test_build_enhanced_post_content_falls_back_when_description_is_risky(
+    def test_build_enhanced_post_content_drops_risky_line_but_keeps_ai_hashtags(
         self,
     ) -> None:
         original_post_content = make_post_content()
@@ -120,9 +122,18 @@ class TestGeminiContentGenerator(unittest.TestCase):
             },
         )
 
-        self.assertEqual(enhanced_post_content.caption, original_post_content.caption)
+        # 위험 키워드가 든 설명문은 제외되지만, 요약은 기본값으로 유지되고
+        # AI 해시태그는 그대로 반영된다.
+        self.assertNotIn("격차", enhanced_post_content.caption)
+        self.assertIn("• 테스트 요약", enhanced_post_content.caption)
+        self.assertEqual(
+            enhanced_post_content.hashtags,
+            ["대구", "창업지원", "사업공고", "예비창업"],
+        )
 
-    def test_build_enhanced_post_content_falls_back_to_original_values(self) -> None:
+    def test_build_enhanced_post_content_falls_back_to_default_when_payload_empty(
+        self,
+    ) -> None:
         original_post_content = make_post_content()
 
         enhanced_post_content = build_enhanced_post_content(
@@ -134,7 +145,9 @@ class TestGeminiContentGenerator(unittest.TestCase):
             },
         )
 
-        self.assertEqual(enhanced_post_content.caption, original_post_content.caption)
+        # 보강할 내용이 없으면 요약은 기본값, 해시태그는 카테고리 기본값으로 채운다.
+        self.assertIn("• 테스트 요약", enhanced_post_content.caption)
+        self.assertNotIn("🎯 추천 대상", enhanced_post_content.caption)
         self.assertEqual(
             enhanced_post_content.image_text_lines,
             original_post_content.image_text_lines,
@@ -142,6 +155,30 @@ class TestGeminiContentGenerator(unittest.TestCase):
         self.assertEqual(
             enhanced_post_content.hashtags,
             ["대구", "창업", "사업", "지원"],
+        )
+
+    def test_build_enhanced_post_content_includes_recommended_targets(self) -> None:
+        original_post_content = make_post_content()
+
+        enhanced_post_content = build_enhanced_post_content(
+            original_post_content=original_post_content,
+            generated_payload={
+                "description_lines": ["AI 설명"],
+                "recommended_targets": ["대구 창업지원 공고를 찾는 예비창업자"],
+                "image_text_lines": ["AI 헤더", "AI 제목"],
+                "hashtags": ["딥테크", "창업중심대학"],
+            },
+        )
+
+        self.assertIn("🎯 추천 대상", enhanced_post_content.caption)
+        self.assertIn(
+            "• 대구 창업지원 공고를 찾는 예비창업자",
+            enhanced_post_content.caption,
+        )
+        # AI 태그 2개를 우선 채택하고 부족분은 카테고리 기본 태그로 보충한다.
+        self.assertEqual(
+            enhanced_post_content.hashtags,
+            ["딥테크", "창업중심대학", "대구", "창업"],
         )
 
     def test_build_enhanced_post_content_falls_back_when_image_text_is_invalid(
@@ -166,38 +203,37 @@ class TestGeminiContentGenerator(unittest.TestCase):
             original_post_content.image_text_lines,
         )
 
-    def test_clean_generated_hashtags_removes_hash_prefix_and_duplicates(self) -> None:
+    def test_sanitize_generated_hashtag_strips_hash_and_spaces(self) -> None:
+        self.assertEqual(sanitize_generated_hashtag("#대구 창업"), "대구창업")
+
+    def test_sanitize_generated_hashtag_drops_special_characters(self) -> None:
+        self.assertEqual(sanitize_generated_hashtag("K-Startup"), "KStartup")
+
+    def test_sanitize_generated_hashtag_drops_too_long_tag(self) -> None:
         self.assertEqual(
-            clean_generated_hashtags(["#대구", "대구", "#공공정보", "", 123]),
-            ["대구", "공공정보"],
+            sanitize_generated_hashtag("지나치게긴해시태그테스트입니다"),
+            "",
         )
 
-    def test_clean_generated_hashtags_keeps_unique_values(self) -> None:
+    def test_build_final_hashtags_prefers_ai_and_fills_with_defaults(self) -> None:
         self.assertEqual(
-            clean_generated_hashtags(
-                [
-                    "태그1",
-                    "태그2",
-                    "태그3",
-                    "태그4",
-                    "태그5",
-                    "태그6",
-                    "태그7",
-                    "태그8",
-                    "태그9",
-                ]
+            build_final_hashtags(
+                ["딥테크", "창업중심대학", "지나치게긴해시태그테스트입니다"],
+                "대구 창업지원",
             ),
-            [
-                "태그1",
-                "태그2",
-                "태그3",
-                "태그4",
-                "태그5",
-                "태그6",
-                "태그7",
-                "태그8",
-                "태그9",
-            ],
+            ["딥테크", "창업중심대학", "대구", "창업"],
+        )
+
+    def test_build_final_hashtags_dedupes_against_defaults(self) -> None:
+        self.assertEqual(
+            build_final_hashtags(["대구", "#대구", "창업"], "대구 창업지원"),
+            ["대구", "창업", "사업", "지원"],
+        )
+
+    def test_build_final_hashtags_uses_defaults_when_no_valid_ai_tag(self) -> None:
+        self.assertEqual(
+            build_final_hashtags([], "대구 창업지원"),
+            ["대구", "창업", "사업", "지원"],
         )
 
     def test_validate_description_lines_accepts_valid_lines(self) -> None:
@@ -206,10 +242,10 @@ class TestGeminiContentGenerator(unittest.TestCase):
             ["창업기업 모집 공고입니다.", "원문 공고를 확인하세요."],
         )
 
-    def test_validate_description_lines_rejects_too_many_lines(self) -> None:
+    def test_validate_description_lines_caps_to_max_lines(self) -> None:
         self.assertEqual(
             validate_description_lines(["1", "2", "3", "4"]),
-            [],
+            ["1", "2", "3"],
         )
 
     def test_validate_description_lines_rejects_too_long_line(self) -> None:
@@ -234,10 +270,10 @@ class TestGeminiContentGenerator(unittest.TestCase):
             ["창업지원 공고를 찾는 예비창업자"],
         )
 
-    def test_validate_recommended_target_lines_rejects_too_many_lines(self) -> None:
+    def test_validate_recommended_target_lines_caps_to_max_lines(self) -> None:
         self.assertEqual(
             validate_recommended_target_lines(["1", "2", "3", "4"]),
-            [],
+            ["1", "2", "3"],
         )
 
     def test_validate_demand_prediction_lines_accepts_valid_lines(self) -> None:
@@ -273,36 +309,6 @@ class TestGeminiContentGenerator(unittest.TestCase):
             validate_image_text_lines(
                 ["대구 창업지원", "이 문장은 이미지 카드에 넣기에는 너무 길어서 제외되어야 합니다"]
             ),
-            [],
-        )
-
-    def test_validate_generated_hashtags_accepts_exactly_four_safe_tags(self) -> None:
-        self.assertEqual(
-            validate_generated_hashtags(["대구", "창업지원", "사업공고", "예비창업"]),
-            ["대구", "창업지원", "사업공고", "예비창업"],
-        )
-
-    def test_validate_generated_hashtags_rejects_wrong_count(self) -> None:
-        self.assertEqual(
-            validate_generated_hashtags(["대구", "창업지원", "사업공고"]),
-            [],
-        )
-
-    def test_validate_generated_hashtags_rejects_space(self) -> None:
-        self.assertEqual(
-            validate_generated_hashtags(["대구", "창업 지원", "사업공고", "예비창업"]),
-            [],
-        )
-
-    def test_validate_generated_hashtags_rejects_special_character(self) -> None:
-        self.assertEqual(
-            validate_generated_hashtags(["대구", "창업지원", "사업공고", "K-Startup"]),
-            [],
-        )
-
-    def test_validate_generated_hashtags_rejects_too_long_tag(self) -> None:
-        self.assertEqual(
-            validate_generated_hashtags(["대구", "창업지원", "사업공고", "지나치게긴해시태그테스트입니다"]),
             [],
         )
 
