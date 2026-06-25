@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import unittest
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from sources.daegu_public_recruitment import (
     DaeguRecruitmentRssFeed,
     fetch_daegu_public_recruitment_notices,
 )
+from sources.rss_fetcher import build_rss_request
 
 
 class TestRssSourceResilience(unittest.TestCase):
@@ -74,6 +76,48 @@ class TestRssSourceResilience(unittest.TestCase):
         self.assertEqual(mock_requests_get.call_count, 4)
         self.assertEqual(mock_sleep.call_count, 3)
         mock_print.assert_called_once()
+
+
+class TestRssProxyRequest(unittest.TestCase):
+    DAEGU_FEED_URL = "https://www.daegu.go.kr/icms/rss/feed.do?id=BBS_00029"
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_request_is_direct_when_proxy_not_configured(self) -> None:
+        request_url, request_headers = build_rss_request(self.DAEGU_FEED_URL)
+
+        self.assertEqual(request_url, self.DAEGU_FEED_URL)
+        self.assertNotIn("X-Proxy-Token", request_headers)
+
+    @patch.dict(
+        os.environ,
+        {
+            "RSS_PROXY_BASE_URL": "https://daegu-rss-proxy.example.workers.dev",
+            "RSS_PROXY_TOKEN": "secret-token",
+        },
+        clear=True,
+    )
+    def test_daegu_request_routes_through_proxy_with_token(self) -> None:
+        request_url, request_headers = build_rss_request(self.DAEGU_FEED_URL)
+
+        self.assertEqual(
+            request_url,
+            "https://daegu-rss-proxy.example.workers.dev/?url="
+            "https%3A%2F%2Fwww.daegu.go.kr%2Ficms%2Frss%2Ffeed.do%3Fid%3DBBS_00029",
+        )
+        self.assertEqual(request_headers["X-Proxy-Token"], "secret-token")
+
+    @patch.dict(
+        os.environ,
+        {"RSS_PROXY_BASE_URL": "https://daegu-rss-proxy.example.workers.dev"},
+        clear=True,
+    )
+    def test_non_daegu_host_is_not_proxied(self) -> None:
+        request_url, request_headers = build_rss_request(
+            "https://apis.data.go.kr/some/feed"
+        )
+
+        self.assertEqual(request_url, "https://apis.data.go.kr/some/feed")
+        self.assertNotIn("X-Proxy-Token", request_headers)
 
 
 class FakeResponse:

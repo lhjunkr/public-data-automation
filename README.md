@@ -88,6 +88,19 @@ flowchart TD
 - 외부 요청 장애와 코드 버그를 구분하기 위해 수집 fallback은 네트워크 요청 예외
   중심으로 처리합니다.
 
+### 대구시 RSS 해외 IP 차단 우회
+
+`www.daegu.go.kr` RSS는 해외 IP(GitHub Actions 러너)에서 접속하면 연결이
+차단(ConnectTimeout)됩니다. 한국 PoP에서 나가는 Cloudflare Workers 프록시를
+경유해 이 호스트의 RSS만 우회 수집합니다.
+
+- `RSS_PROXY_BASE_URL`, `RSS_PROXY_TOKEN` 환경변수가 있으면 `www.daegu.go.kr`
+  요청만 프록시를 경유하고, 나머지 호스트는 직접 요청합니다.
+- 환경변수가 없으면 모든 RSS를 직접 요청하므로 로컬(한국)에서는 프록시 없이도
+  동작합니다.
+- 프록시 Worker는 `www.daegu.go.kr` 대상 URL만 허용하고 `X-Proxy-Token`
+  헤더가 일치할 때만 응답하도록 제한합니다.
+
 ## 게시 후보 선정 정책
 
 구현 위치: `selection/content_selector.py`

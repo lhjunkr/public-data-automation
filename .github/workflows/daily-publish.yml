@@ -24,6 +24,9 @@ jobs:
       KSTARTUP_API_KEY: ${{ secrets.KSTARTUP_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
+      RSS_PROXY_BASE_URL: ${{ secrets.RSS_PROXY_BASE_URL }}
+      RSS_PROXY_TOKEN: ${{ secrets.RSS_PROXY_TOKEN }}
+
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
