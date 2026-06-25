@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 import requests
@@ -18,6 +19,13 @@ THREADS_GRAPH_API_BASE_URL = "https://graph.threads.net/v1.0"
 THREADS_USER_ID_ENV_NAME = "THREADS_USER_ID"
 THREADS_ACCESS_TOKEN_ENV_NAME = "THREADS_ACCESS_TOKEN"
 THREADS_REQUEST_TIMEOUT_SECONDS = 30
+THREADS_PUBLISH_MAX_ATTEMPTS = 3
+THREADS_PUBLISH_RETRY_DELAY_SECONDS = 10
+THREADS_MEDIA_NOT_READY_ERROR_MESSAGES = (
+    "not ready",
+    "media id is not available",
+    "not yet available",
+)
 
 
 def publish_prepared_post_to_threads(prepared_post: PreparedPost) -> PublishResult:
@@ -48,7 +56,7 @@ def publish_prepared_post_to_threads(prepared_post: PreparedPost) -> PublishResu
             raw_response=media_container_payload,
         )
 
-    publish_payload = publish_threads_media_container(
+    publish_payload = publish_threads_media_container_with_retry(
         threads_user_id=threads_user_id,
         threads_access_token=threads_access_token,
         creation_id=creation_id,
@@ -96,6 +104,39 @@ def create_threads_media_container(
     )
 
     return parse_json_response(response)
+
+
+def publish_threads_media_container_with_retry(
+    *,
+    threads_user_id: str,
+    threads_access_token: str,
+    creation_id: str,
+) -> dict[str, Any]:
+    publish_payload: dict[str, Any] = {}
+
+    for attempt_number in range(1, THREADS_PUBLISH_MAX_ATTEMPTS + 1):
+        publish_payload = publish_threads_media_container(
+            threads_user_id=threads_user_id,
+            threads_access_token=threads_access_token,
+            creation_id=creation_id,
+        )
+
+        if not is_threads_media_not_ready_error(publish_payload):
+            return publish_payload
+
+        if attempt_number < THREADS_PUBLISH_MAX_ATTEMPTS:
+            time.sleep(THREADS_PUBLISH_RETRY_DELAY_SECONDS)
+
+    return publish_payload
+
+
+def is_threads_media_not_ready_error(response_payload: dict[str, Any]) -> bool:
+    error_message = extract_threads_error_message(response_payload).lower()
+
+    return any(
+        retryable_message in error_message
+        for retryable_message in THREADS_MEDIA_NOT_READY_ERROR_MESSAGES
+    )
 
 
 def publish_threads_media_container(

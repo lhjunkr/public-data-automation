@@ -347,6 +347,36 @@ class TestThreadsPublisher(unittest.TestCase):
             "Threads media publish did not return post id.",
         )
 
+    @patch.dict(
+        os.environ,
+        {
+            "THREADS_USER_ID": "threads-user-id",
+            "THREADS_ACCESS_TOKEN": "threads-access-token",
+        },
+    )
+    @patch("publishing.threads_publisher.time.sleep")
+    @patch("publishing.threads_publisher.requests.post")
+    def test_publish_prepared_post_to_threads_retries_when_media_is_not_ready(
+        self,
+        mock_post,
+        mock_sleep,
+    ) -> None:
+        mock_post.side_effect = [
+            FakeResponse(status_code=200, payload={"id": "creation-id"}),
+            FakeResponse(
+                status_code=400,
+                payload={"error": {"message": "Media is not ready for publishing"}},
+            ),
+            FakeResponse(status_code=200, payload={"id": "threads-post-id"}),
+        ]
+
+        publish_result = publish_prepared_post_to_threads(make_prepared_post())
+
+        self.assertTrue(publish_result.is_success)
+        self.assertEqual(publish_result.remote_post_id, "threads-post-id")
+        self.assertEqual(mock_post.call_count, 3)
+        mock_sleep.assert_called_once_with(10)
+
     @patch.dict(os.environ, {}, clear=True)
     def test_publish_prepared_post_to_threads_requires_environment_values(
         self,
