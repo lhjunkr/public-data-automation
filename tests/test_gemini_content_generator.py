@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
+import os
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from content.gemini_content_generator import (
     build_enhanced_post_content,
     build_final_hashtags,
     enhance_post_content_with_gemini,
+    get_gemini_model_candidates,
     parse_gemini_json_response,
     remove_markdown_code_fence,
     sanitize_generated_hashtag,
@@ -323,6 +327,52 @@ class TestGeminiContentGenerator(unittest.TestCase):
         enhanced_post_content = enhance_post_content_with_gemini(original_post_content)
 
         self.assertEqual(enhanced_post_content, original_post_content)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_get_gemini_model_candidates_uses_primary_then_fallback(self) -> None:
+        self.assertEqual(
+            get_gemini_model_candidates(),
+            ["gemini-3.5-flash", "gemini-2.5-flash"],
+        )
+
+    @patch.dict(
+        os.environ,
+        {"GEMINI_MODEL": "gemini-2.5-flash", "GEMINI_FALLBACK_MODEL": "gemini-2.5-flash"},
+        clear=True,
+    )
+    def test_get_gemini_model_candidates_dedupes_identical_models(self) -> None:
+        self.assertEqual(get_gemini_model_candidates(), ["gemini-2.5-flash"])
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("content.gemini_content_generator.create_gemini_client")
+    def test_enhance_falls_back_to_second_model_on_empty_response(
+        self,
+        mock_create_gemini_client,
+    ) -> None:
+        original_post_content = make_post_content()
+        empty_response = SimpleNamespace(text="")
+        valid_response = SimpleNamespace(
+            text=json.dumps(
+                {
+                    "description_lines": ["폴백 모델이 만든 설명입니다."],
+                    "image_text_lines": ["헤더", "제목"],
+                    "hashtags": ["대구", "창업"],
+                }
+            )
+        )
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = [empty_response, valid_response]
+        mock_create_gemini_client.return_value = mock_client
+
+        enhanced_post_content = enhance_post_content_with_gemini(original_post_content)
+
+        # 프라이머리가 빈 응답을 줘도 폴백 모델 결과로 본문이 채워진다.
+        self.assertIn("폴백 모델이 만든 설명입니다.", enhanced_post_content.caption)
+        called_models = [
+            call.kwargs["model"]
+            for call in mock_client.models.generate_content.call_args_list
+        ]
+        self.assertEqual(called_models, ["gemini-3.5-flash", "gemini-2.5-flash"])
 
 
 def make_post_content() -> PostContent:

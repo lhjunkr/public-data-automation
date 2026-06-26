@@ -18,7 +18,10 @@ from content.post_content_builder import (
 
 
 GEMINI_API_KEY_ENV_NAME = "GEMINI_API_KEY"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
+PRIMARY_GEMINI_MODEL_ENV_NAME = "GEMINI_MODEL"
+FALLBACK_GEMINI_MODEL_ENV_NAME = "GEMINI_FALLBACK_MODEL"
+DEFAULT_PRIMARY_GEMINI_MODEL = "gemini-3.5-flash"
+DEFAULT_FALLBACK_GEMINI_MODEL = "gemini-2.5-flash"
 
 MAX_DESCRIPTION_LINES = 3
 MAX_DESCRIPTION_LINE_LENGTH = 90
@@ -49,25 +52,43 @@ def enhance_post_contents_with_gemini(
 
 
 def enhance_post_content_with_gemini(post_content: PostContent) -> PostContent:
-    try:
-        client = create_gemini_client()
-        prompt = build_gemini_prompt(post_content)
-        response = client.models.generate_content(
-            model=get_gemini_model_name(),
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
-        )
-        generated_payload = parse_gemini_json_response(response.text or "")
+    # 프라이머리 모델이 실패하거나 빈 응답을 주면 폴백 모델로 한 번 더 시도해,
+    # 추천 대상·수요 예측 같은 보강이 빠진 채 게시되는 경우를 줄인다.
+    for model_name in get_gemini_model_candidates():
+        try:
+            return generate_enhanced_post_content(post_content, model_name)
+        except Exception as error:
+            print(f"Gemini 콘텐츠 생성 실패(모델={model_name}): {error}")
 
-        return build_enhanced_post_content(
-            original_post_content=post_content,
-            generated_payload=generated_payload,
-        )
-    except Exception as error:
-        print(f"Gemini 콘텐츠 생성 실패, 기본 게시 문구를 사용합니다: {error}")
-        return post_content
+    print("모든 Gemini 모델 호출에 실패하여 기본 게시 문구를 사용합니다.")
+    return post_content
+
+
+def generate_enhanced_post_content(
+    post_content: PostContent,
+    model_name: str,
+) -> PostContent:
+    client = create_gemini_client()
+    prompt = build_gemini_prompt(post_content)
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+        ),
+    )
+    response_text = (response.text or "").strip()
+
+    if not response_text:
+        # 안전 필터 차단이나 출력 잘림으로 본문이 비면 폴백 모델로 넘어가도록 예외를 던진다.
+        raise ValueError("Gemini 응답이 비어 있습니다.")
+
+    generated_payload = parse_gemini_json_response(response_text)
+
+    return build_enhanced_post_content(
+        original_post_content=post_content,
+        generated_payload=generated_payload,
+    )
 
 
 def create_gemini_client() -> genai.Client:
@@ -79,8 +100,22 @@ def create_gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-def get_gemini_model_name() -> str:
-    return os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
+def get_gemini_model_candidates() -> list[str]:
+    primary_model = (
+        os.getenv(PRIMARY_GEMINI_MODEL_ENV_NAME, "").strip()
+        or DEFAULT_PRIMARY_GEMINI_MODEL
+    )
+    fallback_model = (
+        os.getenv(FALLBACK_GEMINI_MODEL_ENV_NAME, "").strip()
+        or DEFAULT_FALLBACK_GEMINI_MODEL
+    )
+
+    model_candidates = [primary_model]
+
+    if fallback_model and fallback_model != primary_model:
+        model_candidates.append(fallback_model)
+
+    return model_candidates
 
 
 def build_gemini_prompt(post_content: PostContent) -> str:
